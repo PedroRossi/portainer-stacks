@@ -17,7 +17,19 @@ services:
               count: 1
               capabilities: [gpu]
     runtime: nvidia
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "11435:8080"
+    volumes:
+      - open-webui:/app/backend/data
 
 volumes:
   ollama:
     external: true
+  open-webui:
+    external: false
