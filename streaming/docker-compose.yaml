@@ -1,0 +1,109 @@
+services:
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmission
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+      TRANSMISSION_WEB_HOME: ""
+      USER: ""
+      PASS: ""
+      WHITELIST: ""
+      PEERPORT: ""
+      HOST_WHITELIST: ""
+    volumes:
+      - transmission:/config
+      - ~/Streaming:/downloads
+    ports:
+      - "9091:9091"
+      - "51413:51413"
+      - "51413:51413/udp"
+    restart: unless-stopped
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - radarr:/config
+      - ~/Streaming/:/downloads 
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - sonarr:/config
+      - ~/Streaming/:/downloads 
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - bazarr:/config
+    ports:
+      - "6767:6767"
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr
+  prowlarr: 
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - prowlarr:/config 
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - jellyfin:/config
+      - ~/Streaming/:/data
+    devices:
+      - /dev/dri/:/dev/dri/
+    ports:
+      - "8096:8096"
+      - "7359:7359/udp"
+      - "8920:8920"
+    restart: unless-stopped
+
+volumes:
+  transmission:
+    external: false
+  sonarr:
+    external: false
+  radarr:
+    external: false
+  prowlarr:
+    external: false
+  bazarr:
+    external: false
+  jellyfin:
+    external: false
