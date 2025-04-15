@@ -16,7 +16,7 @@ services:
       HOST_WHITELIST: ""
     volumes:
       - transmission:/config
-      - ~/Streaming:/downloads
+      - downloads:/downloads
     ports:
       - "9091:9091"
       - "51413:51413"
@@ -31,7 +31,7 @@ services:
       TZ: "America/Recife"
     volumes:
       - radarr:/config
-      - ~/Streaming/:/downloads 
+      - downloads:/downloads
     ports:
       - "7878:7878"
     restart: unless-stopped
@@ -44,7 +44,7 @@ services:
       TZ: "America/Recife"
     volumes:
       - sonarr:/config
-      - ~/Streaming/:/downloads 
+      - downloads:/downloads
     ports:
       - "8989:8989"
     restart: unless-stopped
@@ -72,7 +72,7 @@ services:
       TZ: "America/Recife"
     volumes:
       - readarr:/config
-      - ~/Streaming/:/downloads
+      - downloads:/downloads
     ports:
       - "8787:8787"
     restart: unless-stopped
@@ -101,7 +101,7 @@ services:
       TZ: "America/Recife"
     volumes:
       - jellyfin:/config
-      - ~/Streaming/:/data
+      - downloads:/data
     devices:
       - /dev/dri/:/dev/dri/
     ports:
@@ -125,3 +125,9 @@ volumes:
     external: false
   jellyfin:
     external: false
+  downloads:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: $HOME/Streaming
