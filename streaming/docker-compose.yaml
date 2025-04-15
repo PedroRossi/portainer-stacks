@@ -1,3 +1,5 @@
+# Kudos to my friend @jrxcjr who pre compiled everything in the link bellow and shared with me
+# https://github.com/jrxcjr/docker-media-homelab/blob/main/docker-compose.yaml
 services:
   transmission:
     image: lscr.io/linuxserver/transmission:latest
@@ -61,6 +63,19 @@ services:
     depends_on:
       - sonarr
       - radarr
+  readarr:
+    image: lscr.io/linuxserver/readarr:develop
+    container_name: readarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "America/Recife"
+    volumes:
+      - readarr:/config
+      - ~/Streaming/:/downloads
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
   prowlarr: 
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -76,6 +91,7 @@ services:
     depends_on:
       - sonarr
       - radarr
+      - readarr
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
@@ -101,9 +117,11 @@ volumes:
     external: false
   radarr:
     external: false
-  prowlarr:
-    external: false
   bazarr:
+    external: false
+  readarr:
+    external: false
+  prowlarr:
     external: false
   jellyfin:
     external: false
