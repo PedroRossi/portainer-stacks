@@ -1,12 +1,7 @@
 services:
   ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
+    image: ollama/ollama:0.10.1
+    runtime: nvidia
     deploy:
       resources:
         reservations:
@@ -14,7 +9,12 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    runtime: nvidia
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
