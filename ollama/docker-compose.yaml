@@ -16,18 +16,48 @@ services:
     volumes:
       - ollama:/root/.ollama
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:0.6.18
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     container_name: open-webui
     restart: unless-stopped
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_AUTH: false
+      USE_CUDA_DOCKER: true
+      ENABLE_TITLE_GENERATION: true
+      ENABLE_DIRECT_CONNECTIONS: true
+      CHROMA_HTTP_HOST: chromadb
+      # https://github.com/openai/whisper
+      WHISPER_MODEL: small
+      # https://docs.openwebui.com/getting-started/env-configuration/#web-loader-configuration
+      # TODO: enhance this later
+      ENABLE_WEB_SEARCH: true
+      WEB_SEARCH_RESULT_COUNT: 5
     ports:
       - "11435:8080"
     volumes:
       - open-webui:/app/backend/data
+  chromadb:
+    image: chromadb/chroma:1.0.15
+    environment:
+      IS_PERSISTENT: TRUE
+      ANONYMIZED_TELEMETRY: FALSE
+    ports:
+      - "11436:8000"
+    volumes:
+      - chroma:/data
 
 volumes:
   ollama:
     external: true
   open-webui:
     external: false
+  chromadb:
+    external: true
