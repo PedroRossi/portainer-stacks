@@ -34,6 +34,7 @@ services:
       ENABLE_TITLE_GENERATION: true
       ENABLE_DIRECT_CONNECTIONS: true
       CHROMA_HTTP_HOST: chromadb
+      CHROMA_HTTP_PORT: 8000
       # https://github.com/openai/whisper
       WHISPER_MODEL: small
       # https://docs.openwebui.com/getting-started/env-configuration/#web-loader-configuration
@@ -45,13 +46,15 @@ services:
     volumes:
       - open-webui:/app/backend/data
   chromadb:
-    image: chromadb/chroma:1.0.15
+    image: chromadb/chroma:0.6.3
+    container_name: chromadb
     environment:
       IS_PERSISTENT: TRUE
       ANONYMIZED_TELEMETRY: FALSE
     ports:
       - "11436:8000"
     volumes:
+      - ./chromadb.yaml:/config.yaml
       - chromadb:/data
 
 volumes:
