@@ -52,7 +52,7 @@ services:
     ports:
       - "11436:8000"
     volumes:
-      - chroma:/data
+      - chromadb:/data
 
 volumes:
   ollama:
