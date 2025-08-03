@@ -57,6 +57,7 @@ services:
       TZ: "America/Recife"
     volumes:
       - bazarr:/config
+      - downloads:/downloads
     ports:
       - "6767:6767"
     restart: unless-stopped
