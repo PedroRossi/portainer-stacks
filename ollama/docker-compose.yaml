@@ -1,4 +1,59 @@
 services:
+  comfyui:
+    image: ghcr.io/ai-dock/comfyui:latest-cuda
+    container_name: comfyui
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      COMFYUI_ARGS: --listen --port 8188 --preview-method auto
+      WEB_PORT: 8188
+      WEB_ENABLE_AUTH: "false"
+      SERVERLESS: "true"
+    volumes:
+      - ./comfy-data/user:/opt/ComfyUI/user
+      - ./comfy-data/output:/opt/ComfyUI/output
+      - ./forge-data/models/Stable-diffusion:/opt/ComfyUI/models/checkpoints
+      - ./forge-data/models/VAE:/opt/ComfyUI/models/vae
+      - ./forge-data/models/LoRA:/opt/ComfyUI/models/loras
+    ports:
+      - "8188:8188"
+  forge:
+    image: ghcr.io/ai-dock/stable-diffusion-webui-forge:latest-cuda
+    container_name: forge-headless
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      # --api: Permite o OpenWebUI mandar comandos
+      # --no-half-vae: Evita imagens pretas/erro NaN na série 16xx
+      # --xformers: Otimização agressiva de memória
+      FORGE_ARGS: "--listen --api --no-half-vae --xformers"
+      FORGE_PORT_HOST: "7860"
+      FORGE_URL: "0.0.0.0:7860"
+      WEB_ENABLE_AUTH: "false"
+      SERVERLESS: "true"
+    volumes:
+      - ./forge-data/models:/opt/stable-diffusion-webui-forge/models
+      - ./forge-data/outputs:/opt/stable-diffusion-webui-forge/outputs
+    ports:
+      - "17860:17860"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/sdapi/v1/progress"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
   ollama:
     image: ollama/ollama:0.10.1
     runtime: nvidia
@@ -43,6 +98,10 @@ services:
       # TODO: enhance this later
       ENABLE_WEB_SEARCH: true
       WEB_SEARCH_RESULT_COUNT: 5
+      ENABLE_IMAGE_GENERATION: true
+      IMAGE_GENERATION_ENGINE: automatic1111
+      AUTOMATIC1111_BASE_URL: http://forge:7860
+      IMAGE_SIZE: 512x512
     ports:
       - "11435:8080"
     volumes:
