@@ -1,5 +1,6 @@
 services:
   comfyui:
+    profiles: ["image"]
     image: ghcr.io/ai-dock/comfyui:latest-cuda
     container_name: comfyui
     restart: unless-stopped
@@ -24,6 +25,7 @@ services:
     ports:
       - "8188:8188"
   forge:
+    profiles: ["image"]
     image: ghcr.io/ai-dock/stable-diffusion-webui-forge:latest-cuda
     container_name: forge-headless
     restart: unless-stopped
@@ -55,7 +57,7 @@ services:
       retries: 10
       start_period: 60s
   ollama:
-    image: ollama/ollama:0.10.1
+    image: ollama/ollama:0.17.6
     runtime: nvidia
     deploy:
       resources:
@@ -107,6 +109,7 @@ services:
     volumes:
       - open-webui:/app/backend/data
   chromadb:
+    profiles: ["rag"]
     image: chromadb/chroma:0.6.3
     container_name: chromadb
     environment:
