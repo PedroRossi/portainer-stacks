@@ -118,9 +118,9 @@ services:
       # Model to load - change this to switch models
       # 4B Q4_K_M: ngl 99, 42 tok/s | 9B Q3_K_M: ngl 99, 25 tok/s (best)
       # 9B Q4_K_M: ngl 31 + q4_0 KV cache, 17 tok/s (partial offload)
-      LLAMA_ARG_MODEL: /models/Qwen3.5-9B-Q3_K_M.gguf
+      LLAMA_ARG_MODEL: /models/Qwen3.5-4B-Q4_K_M.gguf
       LLAMA_ARG_N_GPU_LAYERS: "99"
-      LLAMA_ARG_CTX_SIZE: "16384"
+      LLAMA_ARG_CTX_SIZE: "32768"
       LLAMA_ARG_FLASH_ATTN: "on"
       LLAMA_ARG_THREADS: "6"
       LLAMA_ARG_HOST: "0.0.0.0"
