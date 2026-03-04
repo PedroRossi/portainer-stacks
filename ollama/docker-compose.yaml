@@ -108,6 +108,33 @@ services:
       - "11435:8080"
     volumes:
       - open-webui:/app/backend/data
+  llama-cpp:
+    profiles: ["qwen"]
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    container_name: llama-cpp
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      # Model to load - change this to switch models
+      LLAMA_ARG_MODEL: /models/Qwen3.5-4B-Q4_K_M.gguf
+      LLAMA_ARG_N_GPU_LAYERS: "99"
+      LLAMA_ARG_CTX_SIZE: "4096"
+      LLAMA_ARG_FLASH_ATTN: "on"
+      LLAMA_ARG_THREADS: "4"
+      LLAMA_ARG_HOST: "0.0.0.0"
+      LLAMA_ARG_PORT: "8080"
+      # Jinja templates for proper Qwen chat format
+      LLAMA_ARG_JINJA: "true"
+    volumes:
+      - ./llama-models:/models
+    ports:
+      - "8081:8080"
   chromadb:
     image: chromadb/chroma:0.6.3
     container_name: chromadb
