@@ -57,6 +57,7 @@ services:
       retries: 10
       start_period: 60s
   ollama:
+    profiles: ["ollama"]
     image: ollama/ollama:0.17.6
     runtime: nvidia
     deploy:
@@ -76,20 +77,11 @@ services:
       - ollama:/root/.ollama
   open-webui:
     image: ghcr.io/open-webui/open-webui:0.6.18
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     container_name: open-webui
     restart: unless-stopped
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       WEBUI_AUTH: false
-      USE_CUDA_DOCKER: true
       ENABLE_TITLE_GENERATION: true
       ENABLE_DIRECT_CONNECTIONS: true
       CHROMA_HTTP_HOST: chromadb
@@ -122,15 +114,19 @@ services:
               capabilities: [gpu]
     environment:
       # Model to load - change this to switch models
-      LLAMA_ARG_MODEL: /models/Qwen3.5-4B-Q4_K_M.gguf
-      LLAMA_ARG_N_GPU_LAYERS: "99"
+      # 4B: ngl 99 (fits fully), 9B: ngl 31 (partial offload)
+      LLAMA_ARG_MODEL: /models/Qwen3.5-9B-Q4_K_M.gguf
+      LLAMA_ARG_N_GPU_LAYERS: "31"
       LLAMA_ARG_CTX_SIZE: "4096"
       LLAMA_ARG_FLASH_ATTN: "on"
-      LLAMA_ARG_THREADS: "4"
+      LLAMA_ARG_THREADS: "6"
       LLAMA_ARG_HOST: "0.0.0.0"
       LLAMA_ARG_PORT: "8080"
       # Jinja templates for proper Qwen chat format
       LLAMA_ARG_JINJA: "true"
+      # q4_0 KV cache saves VRAM for partial offload (GTX 1660 SUPER 6GB)
+      LLAMA_ARG_CACHE_TYPE_K: "q4_0"
+      LLAMA_ARG_CACHE_TYPE_V: "q4_0"
     volumes:
       - ./llama-models:/models
     ports:
