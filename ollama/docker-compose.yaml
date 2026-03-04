@@ -131,6 +131,19 @@ services:
       - ./llama-models:/models
     ports:
       - "8081:8080"
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: openclaw
+    restart: unless-stopped
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_BIND: "lan"
+    volumes:
+      - openclaw-config:/home/node/.openclaw
+      - openclaw-workspace:/home/node/.openclaw/workspace
+    ports:
+      - "18789:18789"
   chromadb:
     image: chromadb/chroma:0.6.3
     container_name: chromadb
@@ -147,6 +160,10 @@ volumes:
   ollama:
     external: true
   open-webui:
+    external: false
+  openclaw-config:
+    external: false
+  openclaw-workspace:
     external: false
   chromadb:
     external: true

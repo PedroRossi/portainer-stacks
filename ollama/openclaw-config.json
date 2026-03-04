@@ -1,0 +1,38 @@
+{
+  "gateway": {
+    "bind": "lan"
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "llamacpp/Qwen3.5-9B-Q3_K_M"
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "llamacpp": {
+        "baseUrl": "http://llama-cpp:8080/v1",
+        "apiKey": "sk-unused",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "Qwen3.5-9B-Q3_K_M",
+            "name": "Qwen 3.5 9B Q3_K_M (local)",
+            "reasoning": false,
+            "input": ["text"],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 4096,
+            "maxTokens": 4096
+          }
+        ]
+      }
+    }
+  }
+}
