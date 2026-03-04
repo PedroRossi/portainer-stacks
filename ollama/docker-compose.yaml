@@ -81,6 +81,9 @@ services:
     restart: unless-stopped
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OPENAI_API: true
+      OPENAI_API_BASE_URL: http://llama-cpp:8080/v1
+      OPENAI_API_KEY: "sk-unused"
       WEBUI_AUTH: false
       ENABLE_TITLE_GENERATION: true
       ENABLE_DIRECT_CONNECTIONS: true
