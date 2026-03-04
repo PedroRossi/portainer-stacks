@@ -109,7 +109,6 @@ services:
     volumes:
       - open-webui:/app/backend/data
   chromadb:
-    profiles: ["rag"]
     image: chromadb/chroma:0.6.3
     container_name: chromadb
     environment:
