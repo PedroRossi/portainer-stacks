@@ -104,7 +104,6 @@ services:
     volumes:
       - open-webui:/app/backend/data
   llama-cpp:
-    profiles: ["qwen"]
     image: ghcr.io/ggml-org/llama.cpp:server-cuda
     container_name: llama-cpp
     restart: unless-stopped
