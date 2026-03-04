@@ -120,7 +120,7 @@ services:
       # 9B Q4_K_M: ngl 31 + q4_0 KV cache, 17 tok/s (partial offload)
       LLAMA_ARG_MODEL: /models/Qwen3.5-9B-Q3_K_M.gguf
       LLAMA_ARG_N_GPU_LAYERS: "99"
-      LLAMA_ARG_CTX_SIZE: "4096"
+      LLAMA_ARG_CTX_SIZE: "16384"
       LLAMA_ARG_FLASH_ATTN: "on"
       LLAMA_ARG_THREADS: "6"
       LLAMA_ARG_HOST: "0.0.0.0"
@@ -131,19 +131,20 @@ services:
       - ./llama-models:/models
     ports:
       - "8081:8080"
-  openclaw:
-    image: ghcr.io/openclaw/openclaw:latest
-    container_name: openclaw
+  picoclaw:
+    build:
+      context: https://github.com/sipeed/picoclaw.git
+      dockerfile: docker/Dockerfile
+    container_name: picoclaw
     restart: unless-stopped
     environment:
-      HOME: /home/node
-      TERM: xterm-256color
-      OPENCLAW_GATEWAY_BIND: "lan"
+      PICOCLAW_GATEWAY_HOST: "0.0.0.0"
+      PICOCLAW_CHANNELS_TELEGRAM_TOKEN: "${TELEGRAM_BOT_TOKEN}"
     volumes:
-      - openclaw-config:/home/node/.openclaw
-      - openclaw-workspace:/home/node/.openclaw/workspace
+      - picoclaw-data:/home/picoclaw/.picoclaw
+      - ./picoclaw-config.json:/home/picoclaw/.picoclaw/config.json
     ports:
-      - "18789:18789"
+      - "18790:18790"
   chromadb:
     image: chromadb/chroma:0.6.3
     container_name: chromadb
@@ -161,9 +162,7 @@ volumes:
     external: true
   open-webui:
     external: false
-  openclaw-config:
-    external: false
-  openclaw-workspace:
+  picoclaw-data:
     external: false
   chromadb:
     external: true
