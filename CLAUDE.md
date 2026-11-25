@@ -12,9 +12,14 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
   Presets in `ai-lab/llama-server/models.ini`: `qwen3.6-35b-a3b` (loaded at startup), `qwen3.6-35b-a3b-512k`,
   `gemma-4-26b-a4b`. Nothing unloads automatically. Requests must name a model (400 without one).
   The router reads the host copy, `$LLM_HOME/ai-lab/llama-server/models.ini`; `GET /models?reload=1` applies edits.
+- **Open WebUI** v0.13.5; its OpenAI connection has Provider `llama.cpp` (set once in the UI; stored in its database).
 - **Downloads** go to the cache (`LLAMA_CACHE=/cache`, host `$LLM_HOME/models/hf-cache`): llama.cpp's web UI
-  (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI's "Model manager" function
-  (`ai-lab/open-webui/model_manager.py`, stored in Open WebUI's database once installed), or `POST /models`.
+  (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI v0.13+ (connection Provider `llama.cpp`:
+  model picker Download, Manage Models with Eject/delete), the optional "Model manager" function
+  (`ai-lab/open-webui/model_manager.py`), or `POST /models`. Web UI deletes leave the vision file; the function's `rm` doesn't.
+- **Presets** are mounted as a folder (`$LLM_HOME/ai-lab/llama-server` → `/config`): a single-file bind mount
+  keeps the old inode when an editor or rsync replaces the file. Vision projectors are BF16 (cuBLAS FP16 GEMM is
+  ~6x slower than FP32 on GTX 16xx).
 - **Profiles:** `ollama`, and `image` (`comfyui` + `forge`). Enable them with `COMPOSE_PROFILES` in Portainer.
 - **GPU:** on a 6 GB card the loaded model holds 4-5.5 GB. Run the profile services only after unloading it.
 - **Image:** `llama-server:<tag>`, from `ai-lab/llama-server/`. That's upstream llama.cpp `51831d47d`,
