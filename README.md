@@ -34,8 +34,13 @@ The presets in `ai-lab/llama-server/models.ini` are tuned for a 6 GB card with 3
 | `gemma-4-26b-a4b` | Gemma 4 26B-A4B, Google's QAT 4-bit (Unsloth UD-Q4_K_XL), vision, 131,072-token window |
 
 Their files go in `$LLM_HOME/models` (the `model` and `mmproj` paths in `models.ini`). Pick a model in
-Open WebUI's model list, or send its id as `model` in an API request. Nothing unloads on its own: unload it
-from either web UI, or with `POST /models/unload`, to free the GPU.
+Open WebUI's model list, or send its id as `model` in an API request: every request must name one (the router
+answers 400 without it). Nothing unloads on its own: unload it from either web UI, or with
+`POST /models/unload`, to free the GPU.
+
+The router reads `$LLM_HOME/ai-lab/llama-server/models.ini` (the host copy). Apply edits without a restart with
+`GET /models?reload=1`: a loaded model whose section changed is unloaded, and loads with the new settings on its
+next request.
 
 ### Downloading models
 
@@ -52,7 +57,7 @@ from either web UI, or with `POST /models/unload`, to free the GPU.
 - **API**: `POST /models` with `{"model": "<user>/<repo>:<quant>"}`; progress comes on `GET /models/sse`.
 
 Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`, with `--fit`
-placing them in GPU memory. To tune one, add a section for it to `models.ini`.
+placing them in GPU memory. To tune one, add a section named after its id to `models.ini`.
 
 ### Notes
 

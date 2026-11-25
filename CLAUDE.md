@@ -10,7 +10,8 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
   `chromadb` (:11436), `open-terminal` (:18800, bearer key from a host file).
 - **Router:** one model at a time (`--models-max 1`); a request's `model` field picks it, unloading the current one.
   Presets in `ai-lab/llama-server/models.ini`: `qwen3.6-35b-a3b` (loaded at startup), `qwen3.6-35b-a3b-512k`,
-  `gemma-4-26b-a4b`. Nothing unloads automatically.
+  `gemma-4-26b-a4b`. Nothing unloads automatically. Requests must name a model (400 without one).
+  The router reads the host copy, `$LLM_HOME/ai-lab/llama-server/models.ini`; `GET /models?reload=1` applies edits.
 - **Downloads** go to the cache (`LLAMA_CACHE=/cache`, host `$LLM_HOME/models/hf-cache`): llama.cpp's web UI
   (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI's "Model manager" function
   (`ai-lab/open-webui/model_manager.py`, stored in Open WebUI's database once installed), or `POST /models`.
