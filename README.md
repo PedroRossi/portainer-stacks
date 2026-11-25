@@ -49,9 +49,8 @@ next request.
   and deletes models. The stack turns these options on with `--ui-config`; llama.cpp ships them off.
 - **Open WebUI** (v0.13+, with the connection's Provider set to `llama.cpp` in Admin Panel → Settings →
   Connections): type `<user>/<repo>:<quant>` in the model picker and choose **Download** (progress and cancel).
-  The picker marks the loaded model with a green dot. Admin Panel → Settings → Models → **Actions → Manage**, then
-  **Model providers** in the first dropdown: every model with a loaded/unloaded badge, load,
-  unload and delete buttons, and a field to download by name.
+  The picker marks the loaded model with a green dot. Admin Panel → Settings → Models → **Actions → Manage** lists
+  every model with a loaded/unloaded badge, load, unload and delete buttons, and a field to download by name.
 - **API**: `POST /models` with `{"model": "<user>/<repo>:<quant>"}`; progress comes on `GET /models/sse`.
 
 Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`: mixture-of-experts
