@@ -56,8 +56,11 @@ next request.
   behind the size hints.
 - **API**: `POST /models` with `{"model": "<user>/<repo>:<quant>"}`; progress comes on `GET /models/sse`.
 
-Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`, with `--fit`
-placing them in GPU memory. To tune one, add a section named after its id to `models.ini`.
+Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`: mixture-of-experts
+models keep their experts in RAM (`n-cpu-moe`), and `--fit` sizes the GPU layers and the context. Vision models
+come with their projector (`mmproj`): the router picks the file closest in precision to the model, which on
+Unsloth repos is the BF16 one (also the faster one on these cards). To tune a download, add a section named after
+its id to `models.ini`.
 
 ### Notes
 
