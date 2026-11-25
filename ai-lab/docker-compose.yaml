@@ -135,7 +135,7 @@ services:
     volumes:
       - ollama:/root/.ollama
   open-webui:
-    image: ghcr.io/open-webui/open-webui:0.6.18
+    image: ghcr.io/open-webui/open-webui:v0.13.5   # its llama.cpp provider manages the router's models
     container_name: open-webui
     restart: unless-stopped
     environment:
