@@ -1,7 +1,8 @@
 # ai-lab: a local AI stack, aimed at NVIDIA GTX 16xx cards for now.
 # Portainer deploys it from Git: stack "ai-lab", compose path ai-lab/docker-compose.yaml, polling every 5 min.
 #
-#   default             llama-qwen36  :8080   Qwen3.6-35B-A3B on a GTX-16xx-tuned llama.cpp (OpenAI/Anthropic API + web UI)
+#   default             llama-qwen36  :8080   Qwen3.6-35B-A3B on a GTX-16xx-tuned llama.cpp (OpenAI/Anthropic API + web UI,
+#                                             text + images)
 #                       open-webui    :11435  chat front end, wired to llama-qwen36
 #                       chromadb      :11436  vector store for Open WebUI
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
@@ -16,7 +17,7 @@
 # picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma 0.6.3 ignores the yaml).
 services:
   llama-qwen36:
-    image: llama-qwen36:51831d4
+    image: llama-qwen36:51831d4-r2
     build: ./llama-qwen36          # used only when the tag is missing on the host: bump the tag to rebuild
     container_name: llama-qwen36
     restart: unless-stopped
@@ -31,6 +32,13 @@ services:
       TZ: America/Recife
       MODEL: /models/qwen3.6-35b-a3b-mtp/Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf
       QWEN_ENV_FILE: /config/qwen36.env   # mode file written by qwen.sh (256k|512k), read at every start
+      # Image input: the vision projector that ships with the model. MMPROJ_OFFLOAD=1 runs the image encoder on
+      # the GPU (~1.1 GB more GPU memory, images 2-7 s faster); 0 runs it on the CPU. Unset MMPROJ = text only.
+      MMPROJ: /models/qwen3.6-35b-a3b-mtp/mmproj-F16.gguf
+      MMPROJ_OFFLOAD: "1"
+      # Safety net: GPU memory spills to RAM instead of crashing. Peak at a full 256K context with the
+      # encoder on the GPU measured 5.6 of 6.1 GB, so it isn't normally needed.
+      GGML_CUDA_ENABLE_UNIFIED_MEMORY: "1"
     volumes:
       - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
       - ${LLM_HOME:-/home/pedro/llm}/qwen36.env:/config/qwen36.env:ro

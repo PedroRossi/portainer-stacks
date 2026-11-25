@@ -18,9 +18,12 @@ UB="${UB:-1024}"
 KV="${KV:-q4_0}"   # KV-cache type; llama.cpp Hadamard-rotates quantized K/V automatically
 # beyond the native 262,144 window: YaRN rope scaling (factor = window / 262144)
 ROPE=(); [ -n "${YARN:-}" ] && ROPE=(--rope-scaling yarn --rope-scale "$YARN" --yarn-orig-ctx 262144)
+# image input (vision): MMPROJ = the projector GGUF that ships next to the model; MMPROJ_OFFLOAD=0 runs the
+# image encoder on the CPU (no GPU memory, slower images). Unset MMPROJ = text only.
+MM=(); if [ -n "${MMPROJ:-}" ]; then MM=(--mmproj "$MMPROJ"); [ "${MMPROJ_OFFLOAD:-1}" = 0 ] && MM+=(--no-mmproj-offload); fi
 export CUDA_CACHE_MAXSIZE=4294967296
 exec "$BIN" -m "$MODEL" --alias qwen3.6-35b-a3b \
-  -c "$CTX" -np 1 "${ROPE[@]}" \
+  -c "$CTX" -np 1 "${ROPE[@]}" "${MM[@]}" \
   -ngl 99 --n-cpu-moe 40 -fa on -ctk "$KV" -ctv "$KV" \
   -t 8 -b 2048 -ub "$UB" \
   --jinja --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0 \
