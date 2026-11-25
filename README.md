@@ -50,7 +50,9 @@ next request.
   and deletes models. The stack turns these options on with `--ui-config`; llama.cpp ships them off.
 - **Open WebUI** (v0.13+, with the connection's Provider set to `llama.cpp` in Admin Panel → Settings →
   Connections): type `<user>/<repo>:<quant>` in the model picker and choose **Download** (progress and cancel).
-  Admin Panel → Settings → Models → **Manage Models** shows which model is loaded, with **Eject** and delete.
+  The picker marks the loaded model with a green dot. Admin Panel → Settings → Models → **Actions → Manage**, then
+  **Model providers** in the first dropdown (it opens on Ollama): every model with a loaded/unloaded badge, load,
+  unload and delete buttons, and a field to download by name.
 - **Open WebUI's "Model manager"** (optional): an Open WebUI function, `ai-lab/open-webui/model_manager.py`,
   that adds what the built-in panel lacks: `search gemma 4` (Hugging Face search) and
   `quants unsloth/gemma-4-E4B-it-GGUF` (quantizations, sizes, and whether they fit), plus `pull`, `list`,

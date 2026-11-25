@@ -15,7 +15,7 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
 - **Open WebUI** v0.13.5; its OpenAI connection has Provider `llama.cpp` (set once in the UI; stored in its database).
 - **Downloads** go to the cache (`LLAMA_CACHE=/cache`, host `$LLM_HOME/models/hf-cache`): llama.cpp's web UI
   (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI v0.13+ (connection Provider `llama.cpp`:
-  model picker Download, Manage Models with Eject/delete), the optional "Model manager" function
+  model picker Download and a green dot on the loaded model; Admin → Models → Actions → Manage → Model providers: load/unload/delete), the optional "Model manager" function
   (`ai-lab/open-webui/model_manager.py`), or `POST /models`. Web UI deletes leave the vision file; the function's `rm` doesn't.
 - **Presets** are mounted as a folder (`$LLM_HOME/ai-lab/llama-server` → `/config`): a single-file bind mount
   keeps the old inode when an editor or rsync replaces the file. Vision projectors are BF16 (cuBLAS FP16 GEMM is
