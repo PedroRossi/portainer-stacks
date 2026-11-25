@@ -1,0 +1,179 @@
+# ai-lab: a local AI stack, aimed at NVIDIA GTX 16xx cards for now.
+# Portainer deploys it from Git: stack "ai-lab", compose path ai-lab/docker-compose.yaml, polling every 5 min.
+#
+#   default             llama-qwen36  :8080   Qwen3.6-35B-A3B on a GTX-16xx-tuned llama.cpp (OpenAI/Anthropic API + web UI)
+#                       open-webui    :11435  chat front end, wired to llama-qwen36
+#                       chromadb      :11436  vector store for Open WebUI
+#                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
+#   profile "ollama"    ollama        :11434
+#   profile "image"     comfyui :8188, forge :17860
+#
+# GPU: 6 GB, and llama-qwen36 holds ~4.3 GB. Start the "ollama"/"image" services only after stopping it.
+# In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
+#
+# Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
+# LLM_HOME (default /home/pedro/llm). ~/llm/ai-lab on the host mirrors this folder, plus the data dirs and the key file.
+# picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma 0.6.3 ignores the yaml).
+services:
+  llama-qwen36:
+    image: llama-qwen36:51831d4
+    build: ./llama-qwen36          # used only when the tag is missing on the host: bump the tag to rebuild
+    container_name: llama-qwen36
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      TZ: America/Recife
+      MODEL: /models/qwen3.6-35b-a3b-mtp/Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf
+      QWEN_ENV_FILE: /config/qwen36.env   # mode file written by qwen.sh (256k|512k), read at every start
+    volumes:
+      - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
+      - ${LLM_HOME:-/home/pedro/llm}/qwen36.env:/config/qwen36.env:ro
+    ports:
+      - "8080:8080"
+
+  comfyui:
+    profiles: ["image"]
+    image: ghcr.io/ai-dock/comfyui:latest-cuda
+    container_name: comfyui
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      COMFYUI_ARGS: --listen --port 8188 --preview-method auto
+      WEB_PORT: 8188
+      WEB_ENABLE_AUTH: "false"
+      SERVERLESS: "true"
+    volumes:
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/comfy-data/user:/opt/ComfyUI/user
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/comfy-data/output:/opt/ComfyUI/output
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/forge-data/models/Stable-diffusion:/opt/ComfyUI/models/checkpoints
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/forge-data/models/VAE:/opt/ComfyUI/models/vae
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/forge-data/models/LoRA:/opt/ComfyUI/models/loras
+    ports:
+      - "8188:8188"
+  forge:
+    profiles: ["image"]
+    image: ghcr.io/ai-dock/stable-diffusion-webui-forge:latest-cuda
+    container_name: forge-headless
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      # --api: Permite o OpenWebUI mandar comandos
+      # --no-half-vae: Evita imagens pretas/erro NaN na série 16xx
+      # --xformers: Otimização agressiva de memória
+      FORGE_ARGS: "--listen --api --no-half-vae --xformers"
+      FORGE_PORT_HOST: "7860"
+      FORGE_URL: "0.0.0.0:7860"
+      WEB_ENABLE_AUTH: "false"
+      SERVERLESS: "true"
+    volumes:
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/forge-data/models:/opt/stable-diffusion-webui-forge/models
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/forge-data/outputs:/opt/stable-diffusion-webui-forge/outputs
+    ports:
+      - "17860:17860"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/sdapi/v1/progress"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:0.17.6
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    container_name: ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: "3"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:0.6.18
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OPENAI_API: true
+      OPENAI_API_BASE_URL: http://llama-qwen36:8080/v1
+      OPENAI_API_KEY: "sk-unused"
+      WEBUI_AUTH: false
+      ENABLE_TITLE_GENERATION: true
+      ENABLE_DIRECT_CONNECTIONS: true
+      CHROMA_HTTP_HOST: chromadb
+      CHROMA_HTTP_PORT: 8000
+      # https://github.com/openai/whisper
+      WHISPER_MODEL: small
+      # https://docs.openwebui.com/getting-started/env-configuration/#web-loader-configuration
+      # TODO: enhance this later
+      ENABLE_WEB_SEARCH: true
+      WEB_SEARCH_RESULT_COUNT: 5
+      ENABLE_IMAGE_GENERATION: true
+      IMAGE_GENERATION_ENGINE: automatic1111
+      AUTOMATIC1111_BASE_URL: http://forge:7860
+      IMAGE_SIZE: 512x512
+    ports:
+      - "11435:8080"
+    volumes:
+      - open-webui:/app/backend/data
+  open-terminal:
+    image: ghcr.io/open-webui/open-terminal
+    container_name: open-terminal
+    restart: unless-stopped
+    environment:
+      # A fixed bearer key, kept out of git and Portainer: a file on the host.
+      # Without one, open-terminal makes up a new random key at every start.
+      OPEN_TERMINAL_API_KEY_FILE: /run/secrets/open-terminal.key
+    volumes:
+      - open-terminal:/home/user
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/open-terminal.key:/run/secrets/open-terminal.key:ro
+    ports:
+      - "18800:8000"
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    container_name: chromadb
+    restart: unless-stopped
+    environment:
+      IS_PERSISTENT: TRUE
+      ANONYMIZED_TELEMETRY: FALSE
+    ports:
+      - "11436:8000"
+    volumes:
+      - chromadb:/chroma/chroma   # where Chroma 0.6.3 actually writes its database
+
+volumes:
+  ollama:
+    external: true
+  open-webui:
+    external: true
+    name: ollama_open-webui       # Open WebUI's chats and settings
+  open-terminal:
+    external: true
+    name: ollama_open-terminal
+  chromadb:
+    external: true
