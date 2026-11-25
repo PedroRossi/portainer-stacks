@@ -1,26 +1,30 @@
 # ai-lab: a local AI stack, aimed at NVIDIA GTX 16xx cards for now.
-# Portainer deploys it from Git: stack "ai-lab", compose path ai-lab/docker-compose.yaml, polling every 5 min.
+# Portainer deploys it from Git: stack "ai-lab", compose path ai-lab/docker-compose.yaml. Auto-update doesn't run on
+# this Portainer (CE 2.45.1): after a push, redeploy by hand ("Pull and redeploy").
 #
-#   default             llama-qwen36  :8080   Qwen3.6-35B-A3B on a GTX-16xx-tuned llama.cpp (OpenAI/Anthropic API + web UI,
-#                                             text + images)
-#                       open-webui    :11435  chat front end, wired to llama-qwen36
+#   default             llama-server  :8080   llama.cpp router on a GTX-16xx-tuned build: one model at a time
+#                                             (Qwen3.6-35B-A3B, Gemma 4 26B-A4B, and anything you download).
+#                                             OpenAI/Anthropic API, plus a web UI with a model manager
+#                                             (download from Hugging Face, load, unload, delete)
+#                       open-webui    :11435  chat front end, wired to llama-server
 #                       chromadb      :11436  vector store for Open WebUI
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
 #   profile "ollama"    ollama        :11434
 #   profile "image"     comfyui :8188, forge :17860
 #
-# GPU: 6 GB, and llama-qwen36 holds ~4.3 GB. Start the "ollama"/"image" services only after stopping it.
+# GPU: 6 GB, and the loaded model holds 4-5.5 GB. Start the "ollama"/"image" services only after unloading it.
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
 # LLM_HOME (default /home/pedro/llm). ~/llm/ai-lab on the host mirrors this folder, plus the data dirs and the key file.
 # picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma 0.6.3 ignores the yaml).
 services:
-  llama-qwen36:
-    image: llama-qwen36:51831d4-r2
-    build: ./llama-qwen36          # used only when the tag is missing on the host: bump the tag to rebuild
-    container_name: llama-qwen36
+  llama-server:
+    image: llama-server:51831d4
+    build: ./llama-server          # used only when the tag is missing on the host: bump the tag to rebuild
+    container_name: llama-server
     restart: unless-stopped
+    user: "1000:1000"              # downloaded models (~/llm/models/hf-cache) stay owned by the host user
     deploy:
       resources:
         reservations:
@@ -28,20 +32,18 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    # Router mode: one model at a time (--models-max 1); asking for another model unloads the current one.
+    # Models and their settings: models.ini (presets), plus anything downloaded into the cache.
+    command: ["--models-preset", "/config/models.ini", "--models-max", "1", "--host", "0.0.0.0", "--port", "8080"]
     environment:
       TZ: America/Recife
-      MODEL: /models/qwen3.6-35b-a3b-mtp/Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf
-      QWEN_ENV_FILE: /config/qwen36.env   # mode file written by qwen.sh (256k|512k), read at every start
-      # Image input: the vision projector that ships with the model. MMPROJ_OFFLOAD=1 runs the image encoder on
-      # the GPU (~1.1 GB more GPU memory, images 2-7 s faster); 0 runs it on the CPU. Unset MMPROJ = text only.
-      MMPROJ: /models/qwen3.6-35b-a3b-mtp/mmproj-F16.gguf
-      MMPROJ_OFFLOAD: "1"
-      # Safety net: GPU memory spills to RAM instead of crashing. Peak at a full 256K context with the
-      # encoder on the GPU measured 5.6 of 6.1 GB, so it isn't normally needed.
+      LLAMA_CACHE: /cache                       # where downloads go
+      # Safety net: GPU memory spills to RAM instead of crashing (the 512k preset needs it)
       GGML_CUDA_ENABLE_UNIFIED_MEMORY: "1"
     volumes:
       - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
-      - ${LLM_HOME:-/home/pedro/llm}/qwen36.env:/config/qwen36.env:ro
+      - ${LLM_HOME:-/home/pedro/llm}/models/hf-cache:/cache
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/llama-server/models.ini:/config/models.ini:ro
     ports:
       - "8080:8080"
 
@@ -128,7 +130,7 @@ services:
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       ENABLE_OPENAI_API: true
-      OPENAI_API_BASE_URL: http://llama-qwen36:8080/v1
+      OPENAI_API_BASE_URL: http://llama-server:8080/v1
       OPENAI_API_KEY: "sk-unused"
       WEBUI_AUTH: false
       ENABLE_TITLE_GENERATION: true
