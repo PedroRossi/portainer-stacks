@@ -3,7 +3,7 @@
 Docker Compose stacks, deployed with **Portainer** (Git-backed stacks) or plain `docker compose`.
 
 - **`ai-lab/`**: a local AI stack: llama.cpp serving one model at a time (with downloads from Hugging Face),
-  Open WebUI, ChromaDB and Open Terminal, plus Ollama and ComfyUI/Forge behind profiles.
+  Open WebUI, ChromaDB and Open Terminal, plus ComfyUI/Forge behind a profile.
   **This setup is aimed at NVIDIA GTX 16xx cards for now.**
 
 ---
@@ -15,11 +15,10 @@ In Portainer, add it as a Git-backed stack with compose path `ai-lab/docker-comp
 
 | service | profile | port | what it is |
 |---|---|---|---|
-| `llama-server` | default | 8080 | llama.cpp router built for GTX 16xx cards: one model at a time; OpenAI/Anthropic API; web UI with a model manager |
+| `llama-server` | default | 8080 | llama.cpp router built for GTX 16xx cards: one model at a time; OpenAI/Anthropic API; web UI with Hugging Face downloads and a Models page |
 | `open-webui` | default | 11435 | chat front end, wired to `llama-server`; downloads, loads, ejects and deletes its models |
 | `chromadb` | default | 11436 | vector store for Open WebUI |
 | `open-terminal` | default | 18800 | shell/code sandbox for the AI; every request needs its bearer key |
-| `ollama` | `ollama` | 11434 | Ollama |
 | `comfyui`, `forge` | `image` | 8188, 17860 | image generation |
 
 ### Models
@@ -51,12 +50,8 @@ next request.
 - **Open WebUI** (v0.13+, with the connection's Provider set to `llama.cpp` in Admin Panel → Settings →
   Connections): type `<user>/<repo>:<quant>` in the model picker and choose **Download** (progress and cancel).
   The picker marks the loaded model with a green dot. Admin Panel → Settings → Models → **Actions → Manage**, then
-  **Model providers** in the first dropdown (it opens on Ollama): every model with a loaded/unloaded badge, load,
+  **Model providers** in the first dropdown: every model with a loaded/unloaded badge, load,
   unload and delete buttons, and a field to download by name.
-- **Open WebUI's "Model manager"** (optional): an Open WebUI function, `ai-lab/open-webui/model_manager.py`,
-  that adds what the built-in panel lacks: `search gemma 4` (Hugging Face search) and
-  `quants unsloth/gemma-4-E4B-it-GGUF` (quantizations, sizes, and whether they fit), plus `pull`, `list`,
-  `load`, `unload` and `rm`. Install it in Admin Panel → Functions, and enable it.
 - **API**: `POST /models` with `{"model": "<user>/<repo>:<quant>"}`; progress comes on `GET /models/sse`.
 
 Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`: mixture-of-experts
@@ -66,11 +61,12 @@ Unsloth repos is the BF16 one, which is also the faster one on these cards (see 
 add a section named after its id to `models.ini`.
 
 Deleting a model from either web UI leaves its vision file in the cache (the router keeps sidecar files
-unless asked for them by name). The Model manager's `rm` removes both.
+unless asked for them by name). To remove both through the API, delete the sidecar first
+(`DELETE /models?model=<id>&sidecar=mmproj`), then the model (`DELETE /models?model=<id>`).
 
 ### Notes
 
-- **GPU memory:** on a 6 GB card the loaded model holds 4-5.5 GB. Start the `ollama`/`image` services
+- **GPU memory:** on a 6 GB card the loaded model holds 4-5.5 GB. Start the `image` services
   only after unloading it. In Portainer, enable profiles with the stack variable `COMPOSE_PROFILES`.
 - **The build:** upstream llama.cpp `51831d47d`, no patches, compiled as CC 7.2 code into sm_75
   machine code with `GGML_CUDA_FORCE_MMQ`. On GTX 16xx cards (Turing without tensor cores) this keeps
@@ -81,7 +77,8 @@ unless asked for them by name). The Model manager's `rm` removes both.
   path under `LLM_HOME` (default `/home/pedro/llm`). That covers the models and the download cache,
   the presets folder `ai-lab/llama-server/` (mounted as a folder, so an edited `models.ini` is always seen),
   `ai-lab/open-terminal.key`, and the ComfyUI/Forge data in `ai-lab/`.
-- **Data volumes** (external): `ollama_open-webui`, `ollama_open-terminal`, `chromadb`, `ollama`.
+- **Data volumes** (external): `ollama_open-webui` (Open WebUI's data), `ollama_open-terminal` (Open Terminal's
+  home) and `chromadb`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
 
 Without Portainer:

@@ -15,12 +15,13 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
 - **Open WebUI** v0.13.5; its OpenAI connection has Provider `llama.cpp` (set once in the UI; stored in its database).
 - **Downloads** go to the cache (`LLAMA_CACHE=/cache`, host `$LLM_HOME/models/hf-cache`): llama.cpp's web UI
   (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI v0.13+ (connection Provider `llama.cpp`:
-  model picker Download and a green dot on the loaded model; Admin → Models → Actions → Manage → Model providers: load/unload/delete), the optional "Model manager" function
-  (`ai-lab/open-webui/model_manager.py`), or `POST /models`. Web UI deletes leave the vision file; the function's `rm` doesn't.
+  model picker Download and a green dot on the loaded model; Admin → Models → Actions → Manage → Model providers: load/unload/delete), or `POST /models`.
+  Web UI deletes leave the vision file: `DELETE /models?model=<id>&sidecar=mmproj` removes it.
 - **Presets** are mounted as a folder (`$LLM_HOME/ai-lab/llama-server` → `/config`): a single-file bind mount
   keeps the old inode when an editor or rsync replaces the file. Vision projectors are BF16 (cuBLAS FP16 GEMM is
   ~6x slower than FP32 on GTX 16xx).
-- **Profiles:** `ollama`, and `image` (`comfyui` + `forge`). Enable them with `COMPOSE_PROFILES` in Portainer.
+- **Profile:** `image` (`comfyui` + `forge`); enable it with `COMPOSE_PROFILES` in Portainer. llama.cpp is the only
+  model runner: there's no Ollama service, and Open WebUI's Ollama connection is off.
 - **GPU:** on a 6 GB card the loaded model holds 4-5.5 GB. Run the profile services only after unloading it.
 - **Image:** `llama-server:<tag>`, from `ai-lab/llama-server/`. That's upstream llama.cpp `51831d47d`,
   CC 7.2 code compiled to sm_75 + `GGML_CUDA_FORCE_MMQ`. Compose builds it only when the tag is
@@ -28,7 +29,7 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
 - **Host paths:** Portainer CE can't mount repo files, so bind mounts are absolute paths under
   `LLM_HOME` (default `/home/pedro/llm`). `$LLM_HOME/ai-lab` mirrors this folder (including
   `llama-server/models.ini`), plus the data dirs and the key file.
-- **Volumes** (external): `ollama_open-webui`, `ollama_open-terminal`, `chromadb`, `ollama`.
+- **Volumes** (external): `ollama_open-webui` (Open WebUI), `ollama_open-terminal` (Open Terminal), `chromadb`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
 
 ## Conventions

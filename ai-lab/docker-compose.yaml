@@ -5,14 +5,13 @@
 #                                             (Qwen3.6-35B-A3B, Gemma 4 26B-A4B, and anything you download).
 #                                             OpenAI/Anthropic API, plus a web UI that searches Hugging Face,
 #                                             downloads, loads, unloads and deletes models
-#                       open-webui    :11435  chat front end, wired to llama-server; its "Model manager" function
-#                                             (open-webui/model_manager.py) downloads and switches models from chat
+#                       open-webui    :11435  chat front end, wired to llama-server; downloads, loads, unloads and
+#                                             deletes its models (connection provider "llama.cpp")
 #                       chromadb      :11436  vector store for Open WebUI
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
-#   profile "ollama"    ollama        :11434
 #   profile "image"     comfyui :8188, forge :17860
 #
-# GPU: on a 6 GB card the loaded model holds 4-5.5 GB. Start the "ollama"/"image" services only after unloading it.
+# GPU: on a 6 GB card the loaded model holds 4-5.5 GB. Start the "image" services only after unloading it.
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
@@ -115,31 +114,12 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
-  ollama:
-    profiles: ["ollama"]
-    image: ollama/ollama:0.17.6
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    container_name: ollama
-    restart: unless-stopped
-    environment:
-      OLLAMA_NUM_PARALLEL: "3"
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.13.5   # its llama.cpp provider manages the router's models
     container_name: open-webui
     restart: unless-stopped
     environment:
-      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OLLAMA_API: false            # llama.cpp is the only model runner
       ENABLE_OPENAI_API: true
       OPENAI_API_BASE_URL: http://llama-server:8080/v1
       OPENAI_API_KEY: "sk-unused"
@@ -188,8 +168,6 @@ services:
       - chromadb:/chroma/chroma   # where Chroma 0.6.3 actually writes its database
 
 volumes:
-  ollama:
-    external: true
   open-webui:
     external: true
     name: ollama_open-webui       # Open WebUI's chats and settings
