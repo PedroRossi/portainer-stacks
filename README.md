@@ -1,0 +1,97 @@
+# portainer-stacks
+
+Docker Compose stacks, deployed with **Portainer** (Git-backed stacks) or plain `docker compose`.
+
+- **`ai-lab/`**: a local AI stack: llama.cpp serving one model at a time (with downloads from Hugging Face),
+  Open WebUI, ChromaDB and Open Terminal, plus Ollama and ComfyUI/Forge behind profiles.
+  **This setup is aimed at NVIDIA GTX 16xx cards for now.**
+
+---
+
+## `ai-lab/`
+
+In Portainer, add it as a Git-backed stack with compose path `ai-lab/docker-compose.yaml`. After a push, use
+"Pull and redeploy" if auto-update hasn't picked it up. A redeploy recreates all of the stack's containers.
+
+| service | profile | port | what it is |
+|---|---|---|---|
+| `llama-server` | default | 8080 | llama.cpp router built for GTX 16xx cards: one model at a time; OpenAI/Anthropic API; web UI with a model manager |
+| `open-webui` | default | 11435 | chat front end, wired to `llama-server` |
+| `chromadb` | default | 11436 | vector store for Open WebUI |
+| `open-terminal` | default | 18800 | shell/code sandbox for the AI; every request needs its bearer key |
+| `ollama` | `ollama` | 11434 | Ollama |
+| `comfyui`, `forge` | `image` | 8188, 17860 | image generation |
+
+### Models
+
+The router loads whichever model a request names, unloading the current one first (about 8 s to switch).
+The presets in `ai-lab/llama-server/models.ini` are tuned for a 6 GB card with 32 GB of RAM:
+
+| model id | what |
+|---|---|
+| `qwen3.6-35b-a3b` | Qwen3.6-35B-A3B, Unsloth UD-Q2_K_XL (2.83 bits/weight), vision, 262,144-token window; loaded at startup |
+| `qwen3.6-35b-a3b-512k` | the same model with a 524,288-token window (YaRN x2; spills to RAM past ~400K tokens) |
+| `gemma-4-26b-a4b` | Gemma 4 26B-A4B, Google's QAT 4-bit (Unsloth UD-Q4_K_XL), vision, 131,072-token window |
+
+Their files go in `$LLM_HOME/models` (the `model` and `mmproj` paths in `models.ini`). Pick a model in
+Open WebUI's model list, or send its id as `model` in an API request. Nothing unloads on its own: unload it
+from either web UI, or with `POST /models/unload`, to free the GPU.
+
+### Downloading models
+
+- **llama.cpp's web UI** (`http://<host>:8080`): open **Search** (Ctrl/⌘+K), type a model name, and pick a
+  result under "On Hugging Face". The **Discover** dialog lists the repo's quantizations with their sizes;
+  click one to download it (the button shows progress and can cancel). The **Models** page (Ctrl/⌘+M) loads, unloads
+  and deletes models. The stack turns these options on with `--ui-config`; llama.cpp ships them off.
+- **Open WebUI**: pick **Model manager** in the model list and type a command, one per message:
+  `search gemma 4`, `quants unsloth/gemma-4-E4B-it-GGUF` (quantizations, sizes, and whether they fit),
+  `pull unsloth/gemma-4-E4B-it-GGUF:Q8_0` (or paste a Hugging Face link), `list`, `load <model>`, `unload`,
+  `rm <model>`; `help` lists them. It's an Open WebUI function: in Admin Panel → Functions, add
+  `ai-lab/open-webui/model_manager.py` and enable it. Its valves set the router URL and the GPU/RAM sizes
+  behind the size hints.
+- **API**: `POST /models` with `{"model": "<user>/<repo>:<quant>"}`; progress comes on `GET /models/sse`.
+
+Downloads go to `$LLM_HOME/models/hf-cache` and run with the `[*]` defaults from `models.ini`, with `--fit`
+placing them in GPU memory. To tune one, add a section for it to `models.ini`.
+
+### Notes
+
+- **GPU memory:** on a 6 GB card the loaded model holds 4-5.5 GB. Start the `ollama`/`image` services
+  only after unloading it. In Portainer, enable profiles with the stack variable `COMPOSE_PROFILES`.
+- **The build:** upstream llama.cpp `51831d47d`, no patches, compiled as CC 7.2 code into sm_75
+  machine code with `GGML_CUDA_FORCE_MMQ`. On GTX 16xx cards (Turing without tensor cores) this keeps
+  fast FP16 and avoids the tensor-core paths, so prompt processing is up to ~3x faster than with the
+  default build. The image `llama-server:<tag>` builds from `ai-lab/llama-server/` only when the tag is
+  missing, so bump the tag to rebuild.
+- **Host paths:** Portainer CE can't bind-mount files from the repo, so every mount is an absolute
+  path under `LLM_HOME` (default `/home/pedro/llm`). That covers the models and the download cache,
+  `ai-lab/llama-server/models.ini`, `ai-lab/open-terminal.key`, and the ComfyUI/Forge data in `ai-lab/`.
+- **Data volumes** (external): `ollama_open-webui`, `ollama_open-terminal`, `chromadb`, `ollama`.
+- `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
+
+Without Portainer:
+
+```bash
+cd ai-lab
+docker compose config --quiet                       # validate
+docker compose up -d                                # the default services
+docker compose --profile image up -d comfyui forge  # image generation (unload the model first)
+```
+
+---
+
+## GPU / NVIDIA
+
+- The image is built on CUDA 12.4, so the host needs NVIDIA driver 550 or newer, plus
+  `nvidia-container-toolkit` with Docker configured for it
+  (`sudo nvidia-ctk runtime configure --runtime=docker`, then restart Docker).
+- An old `nvidia-container-toolkit` can fail under a newer driver with `nvml error: unknown error`:
+  upgrade the toolkit.
+- If the GPU locks up (`nvidia-smi` shows `Unknown Error`; the kernel logs
+  `RC watchdog: GPU is probably locked`), reset it with `sudo nvidia-smi --gpu-reset -i 0`, or reboot.
+
+## Conventions
+- Pinned image tags in the AI stack; services on the same stack talk by container name; host
+  ports are published.
+- `TZ = America/Recife`.
+- See `CLAUDE.md` for agent/operator notes.

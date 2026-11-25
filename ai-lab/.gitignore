@@ -1,6 +1,6 @@
 forge-data/
 comfy-data/
-llama-models/
 .env
 open-terminal.key
 *.key
+__pycache__/

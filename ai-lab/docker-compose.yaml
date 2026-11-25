@@ -1,22 +1,22 @@
 # ai-lab: a local AI stack, aimed at NVIDIA GTX 16xx cards for now.
-# Portainer deploys it from Git: stack "ai-lab", compose path ai-lab/docker-compose.yaml. Auto-update doesn't run on
-# this Portainer (CE 2.45.1): after a push, redeploy by hand ("Pull and redeploy").
+# Deploy it in Portainer as a Git-backed stack (compose path ai-lab/docker-compose.yaml), or with docker compose.
 #
 #   default             llama-server  :8080   llama.cpp router on a GTX-16xx-tuned build: one model at a time
 #                                             (Qwen3.6-35B-A3B, Gemma 4 26B-A4B, and anything you download).
-#                                             OpenAI/Anthropic API, plus a web UI with a model manager
-#                                             (download from Hugging Face, load, unload, delete)
-#                       open-webui    :11435  chat front end, wired to llama-server
+#                                             OpenAI/Anthropic API, plus a web UI that searches Hugging Face,
+#                                             downloads, loads, unloads and deletes models
+#                       open-webui    :11435  chat front end, wired to llama-server; its "Model manager" function
+#                                             (open-webui/model_manager.py) downloads and switches models from chat
 #                       chromadb      :11436  vector store for Open WebUI
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
 #   profile "ollama"    ollama        :11434
 #   profile "image"     comfyui :8188, forge :17860
 #
-# GPU: 6 GB, and the loaded model holds 4-5.5 GB. Start the "ollama"/"image" services only after unloading it.
+# GPU: on a 6 GB card the loaded model holds 4-5.5 GB. Start the "ollama"/"image" services only after unloading it.
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
-# LLM_HOME (default /home/pedro/llm). ~/llm/ai-lab on the host mirrors this folder, plus the data dirs and the key file.
+# LLM_HOME (default /home/pedro/llm). $LLM_HOME/ai-lab mirrors this folder, plus the data dirs and the key file.
 # picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma 0.6.3 ignores the yaml).
 services:
   llama-server:
@@ -24,7 +24,7 @@ services:
     build: ./llama-server          # used only when the tag is missing on the host: bump the tag to rebuild
     container_name: llama-server
     restart: unless-stopped
-    user: "1000:1000"              # downloaded models (~/llm/models/hf-cache) stay owned by the host user
+    user: "1000:1000"              # downloaded models ($LLM_HOME/models/hf-cache) stay owned by the host user
     deploy:
       resources:
         reservations:
@@ -34,7 +34,18 @@ services:
               capabilities: [gpu]
     # Router mode: one model at a time (--models-max 1); asking for another model unloads the current one.
     # Models and their settings: models.ini (presets), plus anything downloaded into the cache.
-    command: ["--models-preset", "/config/models.ini", "--models-max", "1", "--host", "0.0.0.0", "--port", "8080"]
+    # --ui-config: the web UI's Models page and its Hugging Face search ("Discover") are off by default.
+    command:
+      - --models-preset
+      - /config/models.ini
+      - --models-max
+      - "1"
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ui-config
+      - '{"showModelsManager": true, "enableDiscoverModels": true, "useHuggingFaceHub": true}'
     environment:
       TZ: America/Recife
       LLAMA_CACHE: /cache                       # where downloads go
@@ -184,6 +195,6 @@ volumes:
     name: ollama_open-webui       # Open WebUI's chats and settings
   open-terminal:
     external: true
-    name: ollama_open-terminal
+    name: ollama_open-terminal    # Open Terminal's home directory
   chromadb:
     external: true
