@@ -54,7 +54,7 @@ services:
     volumes:
       - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
       - ${LLM_HOME:-/home/pedro/llm}/models/hf-cache:/cache
-      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/llama-server/models.ini:/config/models.ini:ro
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/llama-server:/config:ro   # the folder, not the file: a models.ini replaced by an editor or rsync still shows up
     ports:
       - "8080:8080"
 
