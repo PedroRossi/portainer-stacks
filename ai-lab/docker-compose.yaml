@@ -9,7 +9,7 @@
 #                                             deletes its models (connection provider "llama.cpp")
 #                       chromadb      :11436  vector store for Open WebUI
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
-#   profile "image"     comfyui :8188, forge :17860
+#   profile "image"     comfyui :8188, forge :17860   (disabled for now: COMPOSE_PROFILES is unset)
 #
 # GPU: on a 6 GB card the loaded model holds 4-5.5 GB. Start the "image" services only after unloading it.
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
@@ -134,7 +134,7 @@ services:
       # TODO: enhance this later
       ENABLE_WEB_SEARCH: true
       WEB_SEARCH_RESULT_COUNT: 5
-      ENABLE_IMAGE_GENERATION: true
+      ENABLE_IMAGE_GENERATION: false      # off while ComfyUI/Forge are disabled (profile "image")
       IMAGE_GENERATION_ENGINE: automatic1111
       AUTOMATIC1111_BASE_URL: http://forge:7860
       IMAGE_SIZE: 512x512

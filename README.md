@@ -19,7 +19,7 @@ In Portainer, add it as a Git-backed stack with compose path `ai-lab/docker-comp
 | `open-webui` | default | 11435 | chat front end, wired to `llama-server`; downloads, loads, ejects and deletes its models |
 | `chromadb` | default | 11436 | vector store for Open WebUI |
 | `open-terminal` | default | 18800 | shell/code sandbox for the AI; every request needs its bearer key |
-| `comfyui`, `forge` | `image` | 8188, 17860 | image generation |
+| `comfyui`, `forge` | `image` | 8188, 17860 | image generation; disabled for now |
 
 ### Models
 
@@ -65,6 +65,9 @@ unless asked for them by name). To remove both through the API, delete the sidec
 
 ### Notes
 
+- **Image generation is disabled for now:** the `image` profile isn't enabled, and Open WebUI's image generation
+  is off. To use it, set `COMPOSE_PROFILES=image` on the stack and turn image generation back on in Open WebUI
+  (Admin Panel → Settings → Images; its connection to Forge is kept).
 - **GPU memory:** on a 6 GB card the loaded model holds 4-5.5 GB. Start the `image` services
   only after unloading it. In Portainer, enable profiles with the stack variable `COMPOSE_PROFILES`.
 - **The build:** upstream llama.cpp `51831d47d`, no patches, compiled as CC 7.2 code into sm_75

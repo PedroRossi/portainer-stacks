@@ -20,7 +20,8 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
 - **Presets** are mounted as a folder (`$LLM_HOME/ai-lab/llama-server` → `/config`): a single-file bind mount
   keeps the old inode when an editor or rsync replaces the file. Vision projectors are BF16 (cuBLAS FP16 GEMM is
   ~6x slower than FP32 on GTX 16xx).
-- **Profile:** `image` (`comfyui` + `forge`); enable it with `COMPOSE_PROFILES` in Portainer. llama.cpp is the only
+- **Profile:** `image` (`comfyui` + `forge`), disabled for now (COMPOSE_PROFILES unset; Open WebUI's image
+  generation off, its Forge connection kept). Enable it with `COMPOSE_PROFILES` in Portainer. llama.cpp is the only
   model runner: there's no Ollama service, and Open WebUI's Ollama connection is off.
 - **GPU:** on a 6 GB card the loaded model holds 4-5.5 GB. Run the profile services only after unloading it.
 - **Image:** `llama-server:<tag>`, from `ai-lab/llama-server/`. That's upstream llama.cpp `51831d47d`,
