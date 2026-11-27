@@ -84,6 +84,9 @@ unless asked for them by name). To remove both through the API, delete the sidec
 - **Data volumes** (external): `ollama_open-webui` (Open WebUI's data), `ollama_open-terminal` (Open Terminal's
   home) and `chromadb`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
+- **Chroma's server version follows Open WebUI's client:** Open WebUI v0.13.5 ships chromadb 1.5.9, so the server
+  is `chromadb/chroma:1.5.9`. With an older server (0.6.3), creating a collection failed, which broke file uploads,
+  knowledge bases and RAG web search. Check the pair when upgrading Open WebUI.
 
 Without Portainer:
 

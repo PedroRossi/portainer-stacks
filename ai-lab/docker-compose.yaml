@@ -16,7 +16,8 @@
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
 # LLM_HOME (default /home/pedro/llm). $LLM_HOME/ai-lab mirrors this folder, plus the data dirs and the key file.
-# picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma 0.6.3 ignores the yaml).
+# picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma uses its image's own
+# /config.yaml, which keeps the data in /data).
 services:
   llama-server:
     image: llama-server:51831d4
@@ -156,16 +157,17 @@ services:
     ports:
       - "18800:8000"
   chromadb:
-    image: chromadb/chroma:0.6.3
+    # Keep the server on Open WebUI's chromadb client version (v0.13.5 ships 1.5.9): with the 0.6.3 server, a
+    # lookup of a missing collection came back as a generic error, so no collection could be created
+    image: chromadb/chroma:1.5.9
     container_name: chromadb
     restart: unless-stopped
     environment:
-      IS_PERSISTENT: TRUE
-      ANONYMIZED_TELEMETRY: FALSE
+      TZ: America/Recife
     ports:
       - "11436:8000"
     volumes:
-      - chromadb:/chroma/chroma   # where Chroma 0.6.3 actually writes its database
+      - chromadb:/data            # where Chroma 1.x keeps its database (0.6.x used /chroma/chroma)
 
 volumes:
   open-webui:

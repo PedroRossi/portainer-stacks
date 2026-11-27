@@ -32,6 +32,8 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
   `llama-server/models.ini`), plus the data dirs and the key file.
 - **Volumes** (external): `ollama_open-webui` (Open WebUI), `ollama_open-terminal` (Open Terminal), `chromadb`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
+- **Chroma** `chromadb/chroma:1.5.9`, data in `/data`: keep it on Open WebUI's chromadb client version (1.5.9 in
+  v0.13.5). With 0.6.3, creating any collection failed (uploads, knowledge, RAG web search).
 
 ## `search/`
 Deployed by Portainer from Git (compose path `search/docker-compose.yaml`). LAN only: never forward its ports.
