@@ -15,7 +15,7 @@
 # These ports are for the LAN: never forward them to the internet.
 services:
   wallcrawler:
-    image: wallcrawler:0.5.0
+    image: wallcrawler:0.6.0
     pull_policy: never
     container_name: wallcrawler
     restart: unless-stopped
@@ -62,7 +62,7 @@ services:
       retries: 3
 
   tor:
-    image: wallcrawler-tor:0.5.0              # its health check needs a working circuit
+    image: wallcrawler-tor:0.6.0              # its health check needs a working circuit
     pull_policy: never
     container_name: tor
     restart: unless-stopped
@@ -75,7 +75,7 @@ services:
       - "9080:9080"
 
   chromium:
-    image: wallcrawler-chromium:1.65.1        # Playwright's browser server; keep it on wallcrawler's Playwright version
+    image: wallcrawler-chromium:1.65.1-2      # Playwright's version (keep it on wallcrawler's) and our server's revision
     pull_policy: never
     container_name: chromium
     restart: unless-stopped

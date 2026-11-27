@@ -156,9 +156,9 @@ never forward its ports to the internet.
    `pull_policy: never`):
 
    ```bash
-   docker build --target app -t wallcrawler:0.5.0 .
-   docker build -t wallcrawler-tor:0.5.0 docker/tor
-   docker build -t wallcrawler-chromium:1.65.1 docker/chromium
+   docker build --target app -t wallcrawler:0.6.0 .
+   docker build -t wallcrawler-tor:0.6.0 docker/tor
+   docker build -t wallcrawler-chromium:1.65.1-2 docker/chromium
    ```
 
 2. Copy this folder to `$LLM_HOME/search` (Portainer CE can't mount repo files) and add SearXNG's secret key,

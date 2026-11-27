@@ -47,9 +47,10 @@ Deployed by Portainer from Git (compose path `search/docker-compose.yaml`). LAN 
 - **Services:** `wallcrawler` (:11437: `/fetch`, `/search`, MCP at `/mcp`, Open WebUI's external search and loader
   at `/openwebui/search` and `/openwebui/load`), `searxng` (:11438), `tor` (:9050 SOCKS, :9080 HTTP CONNECT;
   private networks only), `chromium` and `byparr` (no ports).
-- **Images:** `wallcrawler:<version>`, `wallcrawler-tor:<version>` and `wallcrawler-chromium:<playwright version>`
-  are built on the host from the wallcrawler repo (`docker build --target app .`, `docker/tor`, `docker/chromium`),
-  with `pull_policy: never`. Bump the tags in the compose file after building new ones.
+- **Images:** `wallcrawler:<version>`, `wallcrawler-tor:<version>` and
+  `wallcrawler-chromium:<playwright version>-<revision>` are built on the host from the wallcrawler repo
+  (`docker build --target app .`, `docker/tor`, `docker/chromium`), with `pull_policy: never`. Bump the tags in the
+  compose file after building new ones.
 - **Host paths:** `$LLM_HOME/search` mirrors this folder (`searxng/settings.yml`, a read-only single-file mount:
   a replaced copy shows up after a redeploy), plus `searxng.secret` (SearXNG's key; kept out of git and Portainer,
   read by a wrapped entrypoint into `SEARXNG_SECRET`).
