@@ -156,8 +156,8 @@ never forward its ports to the internet.
    `pull_policy: never`):
 
    ```bash
-   docker build --target app -t wallcrawler:0.4.0 .
-   docker build -t wallcrawler-tor:0.4.0 docker/tor
+   docker build --target app -t wallcrawler:0.4.1 .
+   docker build -t wallcrawler-tor:0.4.1 docker/tor
    docker build -t wallcrawler-chromium:1.65.1 docker/chromium
    ```
 
@@ -172,10 +172,19 @@ never forward its ports to the internet.
 
 ### Using it
 
-- **Open WebUI** (Admin Panel → Settings → Web Search): Web Search Engine `external` with
-  `http://<host>:11437/openwebui/search`, and Web Loader Engine `external` with `http://<host>:11437/openwebui/load`.
+- **Open WebUI** (Admin Panel → Settings → Web Search):
+  - Web Search Engine `external`, with `http://<host>:11437/openwebui/search`;
+  - Web Loader Engine `external`, with `http://<host>:11437/openwebui/load`;
+  - Web Fetch Max Content Length `20000`, since the loader hands over whole pages.
+
   The Web Search button and the model's `search_web` and `fetch_url` tools (native function calling) then use
-  wallcrawler.
+  wallcrawler. A page attached with `#` and a link is read through it too. Unless the model has File Context on, the
+  model reads that page only through `fetch_url`.
+- **A Researcher model** in Open WebUI:
+  - add `http://<host>:11437/mcp` as an MCP server in Admin Panel → Settings → External Tools;
+  - create a model on Qwen with the wallcrawler tools, File Context on and Web Search off.
+
+  wallcrawler's README has the steps and its system prompt.
 - **Coding tools** over MCP: `http://<host>:11437/mcp`, for example
   `claude mcp add --transport http wallcrawler http://<host>:11437/mcp`. The tools are `search` and `fetch`.
 - **SearXNG** answers at `http://<host>:11438` in a browser too. Its settings (`search/searxng/settings.yml`) turn
