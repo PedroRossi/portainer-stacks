@@ -7,7 +7,7 @@
 #                                             downloads, loads, unloads and deletes models
 #                       open-webui    :11435  chat front end, wired to llama-server; downloads, loads, unloads and
 #                                             deletes its models (connection provider "llama.cpp")
-#                       chromadb      :11436  vector store for Open WebUI
+#                       pgvector      (none)  Postgres with pgvector: Open WebUI's vector store (RAG)
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
 #   profile "image"     comfyui :8188, forge :17860   (disabled for now: COMPOSE_PROFILES is unset)
 #
@@ -15,9 +15,9 @@
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
-# LLM_HOME (default /home/pedro/llm). $LLM_HOME/ai-lab mirrors this folder, plus the data dirs and the key file.
-# picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now (Chroma uses its image's own
-# /config.yaml, which keeps the data in /data).
+# LLM_HOME (default /home/pedro/llm). $LLM_HOME/ai-lab mirrors this folder, plus the data dirs and two secret files
+# kept out of git and Portainer: open-terminal.key, and pgvector.password (one line of letters and digits).
+# picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now.
 services:
   llama-server:
     image: llama-server:51831d4
@@ -119,6 +119,11 @@ services:
     image: ghcr.io/open-webui/open-webui:v0.13.5   # its llama.cpp provider manages the router's models
     container_name: open-webui
     restart: unless-stopped
+    # Open WebUI takes the vector store's address only from PGVECTOR_DB_URL: build it from the password file,
+    # then start as usual
+    entrypoint: ["/bin/bash", "-c", "export PGVECTOR_DB_URL=\"postgresql://openwebui:$$(cat /run/secrets/pgvector.password)@pgvector:5432/openwebui\" && exec bash start.sh"]
+    depends_on:
+      pgvector: {condition: service_healthy}
     environment:
       ENABLE_OLLAMA_API: false            # llama.cpp is the only model runner
       ENABLE_OPENAI_API: true
@@ -127,8 +132,13 @@ services:
       WEBUI_AUTH: false
       ENABLE_TITLE_GENERATION: true
       ENABLE_DIRECT_CONNECTIONS: true
-      CHROMA_HTTP_HOST: chromadb
-      CHROMA_HTTP_PORT: 8000
+      # RAG, chosen by measurement on 2026-11-27 (see the README): pgvector, bge-small-en-v1.5, hybrid search off.
+      # The vector length is fixed when pgvector's table is first made: it must match the embedding model (384).
+      VECTOR_DB: pgvector
+      PGVECTOR_INITIALIZE_MAX_VECTOR_LENGTH: 384
+      PGVECTOR_INDEX_METHOD: hnsw         # the default (ivfflat) gives poor results until the table holds thousands of rows
+      RAG_EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
+      ENABLE_RAG_HYBRID_SEARCH: false     # its keyword half finds nothing for question-like queries
       # https://github.com/openai/whisper
       WHISPER_MODEL: small
       # https://docs.openwebui.com/getting-started/env-configuration/#web-loader-configuration
@@ -143,6 +153,7 @@ services:
       - "11435:8080"
     volumes:
       - open-webui:/app/backend/data
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/pgvector.password:/run/secrets/pgvector.password:ro
   open-terminal:
     image: ghcr.io/open-webui/open-terminal
     container_name: open-terminal
@@ -156,18 +167,27 @@ services:
       - ${LLM_HOME:-/home/pedro/llm}/ai-lab/open-terminal.key:/run/secrets/open-terminal.key:ro
     ports:
       - "18800:8000"
-  chromadb:
-    # Keep the server on Open WebUI's chromadb client version (v0.13.5 ships 1.5.9): with the 0.6.3 server, a
-    # lookup of a missing collection came back as a generic error, so no collection could be created
-    image: chromadb/chroma:1.5.9
-    container_name: chromadb
+  pgvector:
+    image: pgvector/pgvector:0.8.7-pg18
+    container_name: pgvector
     restart: unless-stopped
     environment:
       TZ: America/Recife
-    ports:
-      - "11436:8000"
+      POSTGRES_USER: openwebui
+      POSTGRES_DB: openwebui
+      POSTGRES_PASSWORD_FILE: /run/secrets/pgvector.password   # read once, when the database is first made
     volumes:
-      - chromadb:/data            # where Chroma 1.x keeps its database (0.6.x used /chroma/chroma)
+      - pgvector:/var/lib/postgresql   # Postgres 18 keeps its data under here (PGDATA=/var/lib/postgresql/18/docker)
+      # Owned by uid 999 (postgres) with the host user's group, mode 640: Postgres must be able to read it
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/pgvector.password:/run/secrets/pgvector.password:ro
+    # No published port: only Open WebUI uses it, over the stack's network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openwebui -d openwebui"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 2s
+      retries: 3
 
 volumes:
   open-webui:
@@ -176,5 +196,5 @@ volumes:
   open-terminal:
     external: true
     name: ollama_open-terminal    # Open Terminal's home directory
-  chromadb:
-    external: true
+  pgvector:
+    name: pgvector-data           # Open WebUI's vectors

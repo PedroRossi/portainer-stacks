@@ -7,7 +7,7 @@ aimed at NVIDIA **GTX 16xx** cards for now, and **`search/`**, web search and pa
 Deployed by Portainer from Git (compose path `ai-lab/docker-compose.yaml`). After a push, "Pull and redeploy"
 if auto-update hasn't picked it up. A redeploy recreates every container in the stack.
 - **Default services:** `llama-server` (llama.cpp router, :8080), `open-webui` (:11435, wired to llama-server),
-  `chromadb` (:11436), `open-terminal` (:18800, bearer key from a host file).
+  `pgvector` (no port), `open-terminal` (:18800, bearer key from a host file).
 - **Router:** one model at a time (`--models-max 1`); a request's `model` field picks it, unloading the current one.
   Presets in `ai-lab/llama-server/models.ini`: `qwen3.6-35b-a3b` (loaded at startup), `qwen3.6-35b-a3b-512k`,
   `gemma-4-26b-a4b`. Nothing unloads automatically. Requests must name a model (400 without one).
@@ -29,11 +29,18 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
   missing, so bump the tag to rebuild.
 - **Host paths:** Portainer CE can't mount repo files, so bind mounts are absolute paths under
   `LLM_HOME` (default `/home/pedro/llm`). `$LLM_HOME/ai-lab` mirrors this folder (including
-  `llama-server/models.ini`), plus the data dirs and the key file.
-- **Volumes** (external): `ollama_open-webui` (Open WebUI), `ollama_open-terminal` (Open Terminal), `chromadb`.
+  `llama-server/models.ini`), plus the data dirs and the secret files (`open-terminal.key`, `pgvector.password`).
+- **Volumes:** external `ollama_open-webui` (Open WebUI) and `ollama_open-terminal` (Open Terminal); the stack's own
+  `pgvector-data`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
-- **Chroma** `chromadb/chroma:1.5.9`, data in `/data`: keep it on Open WebUI's chromadb client version (1.5.9 in
-  v0.13.5). With 0.6.3, creating any collection failed (uploads, knowledge, RAG web search).
+- **RAG** (since 2026-11-27): `VECTOR_DB=pgvector` (`pgvector/pgvector:0.8.7-pg18`, user and database `openwebui`,
+  password from `$LLM_HOME/ai-lab/pgvector.password`, uid 999 with the host user's group, mode 640). Open WebUI
+  builds `PGVECTOR_DB_URL` from that file in a wrapped entrypoint, since it has no `_FILE` variant.
+  - Settings: HNSW index, vector length 384 (fixed when the table is first made), embeddings
+    `BAAI/bge-small-en-v1.5`, hybrid search off.
+  - Measured against Turso and Chroma; the README has the numbers. Hybrid stays off because pgvector's keyword
+    query needs every word to match, so question-like queries find nothing.
+  - Chroma was removed: a 0.6.3 server had broken collection creation against Open WebUI's 1.5.9 client.
 
 ## `search/`
 Deployed by Portainer from Git (compose path `search/docker-compose.yaml`). LAN only: never forward its ports.
@@ -70,4 +77,5 @@ docker compose up -d                                # the default services, with
 docker compose --profile image up -d comfyui forge  # image generation (unload the model first)
 ```
 Secrets stay out of git. open-terminal's key is a file on the host (`$LLM_HOME/ai-lab/open-terminal.key`), as
-is SearXNG's (`$LLM_HOME/search/searxng.secret`), and `ai-lab/.env` is git-ignored.
+are pgvector's password (`$LLM_HOME/ai-lab/pgvector.password`) and SearXNG's key (`$LLM_HOME/search/searxng.secret`),
+and `ai-lab/.env` is git-ignored.
