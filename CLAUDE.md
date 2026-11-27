@@ -6,13 +6,17 @@ aimed at NVIDIA **GTX 16xx** cards for now, and **`search/`**, web search and pa
 ## `ai-lab/`
 Deployed by Portainer from Git (compose path `ai-lab/docker-compose.yaml`). After a push, "Pull and redeploy"
 if auto-update hasn't picked it up. A redeploy recreates every container in the stack.
-- **Default services:** `llama-server` (llama.cpp router, :8080), `open-webui` (:11435, wired to llama-server),
+- **Default services:** `rustingstrata` (:8080, RustingStrata serving Qwen3.6-35B-A3B; image built from the
+  PedroRossi/RustingStrata fork in `ai-lab/rustingstrata/`), `open-webui` (:11435, wired to rustingstrata),
   `pgvector` (no port), `open-terminal` (:18800, bearer key from a host file).
+- **Profile `llamacpp`:** `llama-server` (the llama.cpp router below, :8080). Off by default: only one engine fits on
+  the 6 GB GPU. To switch, stop one engine before starting the other, and change Open WebUI's connection URL/Provider.
 - **Router:** one model at a time (`--models-max 1`); a request's `model` field picks it, unloading the current one.
   Presets in `ai-lab/llama-server/models.ini`: `qwen3.6-35b-a3b` (loaded at startup), `qwen3.6-35b-a3b-512k`,
   `gemma-4-26b-a4b`. Nothing unloads automatically. Requests must name a model (400 without one).
   The router reads the host copy, `$LLM_HOME/ai-lab/llama-server/models.ini`; `GET /models?reload=1` applies edits.
-- **Open WebUI** v0.13.5; its OpenAI connection has Provider `llama.cpp` (set once in the UI; stored in its database).
+- **Open WebUI** v0.13.5; its OpenAI connection points at `http://rustingstrata:8080/v1` with the default Provider
+  (stored in its database). With `llama-server`, use Provider `llama.cpp`.
 - **Downloads** go to the cache (`LLAMA_CACHE=/cache`, host `$LLM_HOME/models/hf-cache`): llama.cpp's web UI
   (Search → "On Hugging Face"; enabled with `--ui-config`), Open WebUI v0.13+ (connection Provider `llama.cpp`:
   model picker Download and a green dot on the loaded model; Admin → Models → Actions → Manage: load/unload/delete), or `POST /models`.

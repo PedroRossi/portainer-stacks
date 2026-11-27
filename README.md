@@ -2,8 +2,9 @@
 
 Docker Compose stacks, deployed with **Portainer** (Git-backed stacks) or plain `docker compose`.
 
-- **`ai-lab/`**: a local AI stack: llama.cpp serving one model at a time (with downloads from Hugging Face),
-  Open WebUI with Postgres/pgvector for its documents (RAG), and Open Terminal, plus ComfyUI/Forge behind a profile.
+- **`ai-lab/`**: a local AI stack: RustingStrata serving Qwen3.6-35B-A3B (the llama.cpp router stays available
+  behind a profile), Open WebUI with Postgres/pgvector for its documents (RAG), and Open Terminal, plus ComfyUI/Forge
+  behind a profile.
   **This setup is aimed at NVIDIA GTX 16xx cards for now.**
 - **`search/`**: self-hosted web search and page reading for the AI: wallcrawler (search, fetch, MCP, and Open
   WebUI's web search) with SearXNG, Tor, headless Chromium and Byparr.
@@ -17,13 +18,43 @@ In Portainer, add it as a Git-backed stack with compose path `ai-lab/docker-comp
 
 | service | profile | port | what it is |
 |---|---|---|---|
-| `llama-server` | default | 8080 | llama.cpp router built for GTX 16xx cards: one model at a time; OpenAI/Anthropic API; web UI with Hugging Face downloads and a Models page |
-| `open-webui` | default | 11435 | chat front end, wired to `llama-server`; downloads, loads, ejects and deletes its models |
+| `rustingstrata` | default | 8080 | RustingStrata serving Qwen3.6-35B-A3B (262K window, vision); OpenAI/Anthropic API |
+| `llama-server` | `llamacpp` | 8080 | llama.cpp router built for GTX 16xx cards: one model at a time; OpenAI/Anthropic API; web UI with Hugging Face downloads and a Models page. Off by default: only one engine fits on the GPU |
+| `open-webui` | default | 11435 | chat front end, wired to `rustingstrata` |
 | `pgvector` | default | none | Postgres 18 with pgvector: Open WebUI's vector store (documents, knowledge bases, web search results) |
 | `open-terminal` | default | 18800 | shell/code sandbox for the AI; every request needs its bearer key |
 | `comfyui`, `forge` | `image` | 8188, 17860 | image generation; disabled for now |
 
-### Models
+### Default engine: RustingStrata
+
+[RustingStrata](https://github.com/RustingStudio/RustingStrata) is a Rust engine for mixture-of-experts GGUFs.
+- Experts that don't fit in VRAM run on the CPU *at the same time* as the GPU work, where llama.cpp makes them take turns.
+- An expert cache fills the spare VRAM with the most-used experts.
+
+The image builds from the [PedroRossi/RustingStrata](https://github.com/PedroRossi/RustingStrata) fork. It adds a
+CUDA-core path for Turing cards without tensor cores: the GTX 16 series runs tensor-core instructions, but far slower
+than its CUDA cores.
+
+Measured on a GTX 1660 SUPER with 32 GB of RAM, on Qwen3.6-35B-A3B UD-Q2_K_XL and the same real text, with the GPU
+clocks locked at 1200 MHz:
+
+| | prefill, ~4K / ~16K prompt | decode after it |
+|---|---|---|
+| llama.cpp router (this stack's `qwen3.6-35b-a3b` preset) | 365 / 328 tok/s | 28.5 / 24.8 tok/s |
+| RustingStrata, 262K window + q4 KV + vision (this service) | 201 / 160 tok/s | 45.1 / 38.7 tok/s |
+
+- **The trade-off:** replies come about 55-60% faster, and long prompts are read about half as fast. In chat and
+  coding sessions most of a prompt is cached, so the faster replies dominate.
+- **Images:** they work, but take about 4.5x longer than on llama.cpp (27 s and 61 s for the two test images).
+- **APIs:** the OpenAI API returns the reasoning in `reasoning_content`. On the Anthropic API the reasoning
+  currently comes inside the text block, with a literal `</think>` before the answer.
+- **Data:** compiled kernels, the expert profile and the calibration file live in `$LLM_HOME/ai-lab/rustingstrata-data`.
+- **Switching back to llama.cpp:**
+  1. Stop `rustingstrata`, then set the stack variable `COMPOSE_PROFILES=llamacpp`.
+  2. In Open WebUI (Admin Panel → Settings → Connections), set the URL to `http://llama-server:8080/v1` and the
+     Provider to `llama.cpp`.
+
+### Models (llama.cpp router, profile `llamacpp`)
 
 The router loads whichever model a request names, unloading the current one first (about 8 s to switch).
 The presets in `ai-lab/llama-server/models.ini` are tuned for a 6 GB card with 32 GB of RAM:

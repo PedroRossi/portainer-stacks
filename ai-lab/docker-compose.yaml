@@ -1,17 +1,18 @@
 # ai-lab: a local AI stack, aimed at NVIDIA GTX 16xx cards for now.
 # Deploy it in Portainer as a Git-backed stack (compose path ai-lab/docker-compose.yaml), or with docker compose.
 #
-#   default             llama-server  :8080   llama.cpp router on a GTX-16xx-tuned build: one model at a time
-#                                             (Qwen3.6-35B-A3B, Gemma 4 26B-A4B, and anything you download).
-#                                             OpenAI/Anthropic API, plus a web UI that searches Hugging Face,
-#                                             downloads, loads, unloads and deletes models
-#                       open-webui    :11435  chat front end, wired to llama-server; downloads, loads, unloads and
-#                                             deletes its models (connection provider "llama.cpp")
+#   default             rustingstrata :8080   RustingStrata serving Qwen3.6-35B-A3B (262K window, vision):
+#                                             experts that don't fit in VRAM run on the CPU alongside the GPU,
+#                                             the most-used ones are cached in VRAM. OpenAI/Anthropic API
+#                       open-webui    :11435  chat front end, wired to rustingstrata (plain OpenAI connection)
 #                       pgvector      (none)  Postgres with pgvector: Open WebUI's vector store (RAG)
 #                       open-terminal :18800  shell/code sandbox for the AI (bearer key required)
+#   profile "llamacpp"  llama-server  :8080   the llama.cpp router: several models one at a time (Gemma 4, downloads,
+#                                             a web UI that manages them). Off: only one engine fits on the GPU.
+#                                             To switch back, stop rustingstrata and set COMPOSE_PROFILES=llamacpp
 #   profile "image"     comfyui :8188, forge :17860   (disabled for now: COMPOSE_PROFILES is unset)
 #
-# GPU: on a 6 GB card the loaded model holds 4-5.5 GB. Start the "image" services only after unloading it.
+# GPU: on a 6 GB card the model holds 4-5.5 GB. Start the "image" services only after stopping the model server.
 # In Portainer, enable profiles with the stack variable COMPOSE_PROFILES.
 #
 # Portainer CE can't bind-mount files from the repo, so every bind mount is an absolute host path under
@@ -19,7 +20,60 @@
 # kept out of git and Portainer: open-terminal.key, and pgvector.password (one line of letters and digits).
 # picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now.
 services:
+  rustingstrata:
+    image: rustingstrata:f71f857
+    build: ./rustingstrata         # used only when the tag is missing on the host: bump the tag to rebuild
+    container_name: rustingstrata
+    restart: unless-stopped
+    user: "1000:1000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # One model: Qwen3.6-35B-A3B UD-Q2_K_XL with its full 262K window (q4 KV cache, 1.4 GB), its vision projector
+    # and Qwen's recommended sampling. Measured against the llama.cpp router on a GTX 1660 SUPER (see the README).
+    command:
+      - serve
+      - --model
+      - /models/qwen3.6-35b-a3b-mtp/Qwen3.6-35B-A3B-UD-Q2_K_XL.gguf
+      - --mmproj
+      - /models/qwen3.6-35b-a3b-mtp/mmproj-BF16.gguf
+      - --alias
+      - qwen3.6-35b-a3b
+      - --gpu
+      - --backend
+      - cuda
+      - --ctx
+      - "262144"
+      - --kv
+      - q4
+      - --addr
+      - 0.0.0.0:8080
+      - --allowed-hosts
+      - rustingstrata                # the name Open WebUI uses; IP addresses need no entry
+      - --temp
+      - "1.0"
+      - --top-k
+      - "20"
+      - --top-p
+      - "0.95"
+      - --min-p
+      - "0"
+    environment:
+      TZ: America/Recife
+      HOME: /data                    # compiled kernels, the expert profile and the calibration file
+      STRATA_NO_UPDATE_CHECK: "1"    # the image pins a commit; updates go through the Dockerfile
+    volumes:
+      - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
+      - ${LLM_HOME:-/home/pedro/llm}/ai-lab/rustingstrata-data:/data
+    ports:
+      - "8080:8080"
+
   llama-server:
+    profiles: ["llamacpp"]           # off by default: rustingstrata holds the GPU and port 8080
     image: llama-server:51831d4
     build: ./llama-server          # used only when the tag is missing on the host: bump the tag to rebuild
     container_name: llama-server
@@ -116,7 +170,7 @@ services:
       retries: 10
       start_period: 60s
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.13.5   # its llama.cpp provider manages the router's models
+    image: ghcr.io/open-webui/open-webui:v0.13.5
     container_name: open-webui
     restart: unless-stopped
     # Open WebUI takes the vector store's address only from PGVECTOR_DB_URL: build it from the password file,
@@ -125,9 +179,11 @@ services:
     depends_on:
       pgvector: {condition: service_healthy}
     environment:
-      ENABLE_OLLAMA_API: false            # llama.cpp is the only model runner
+      ENABLE_OLLAMA_API: false            # no Ollama: one model server on port 8080
       ENABLE_OPENAI_API: true
-      OPENAI_API_BASE_URL: http://llama-server:8080/v1
+      # Stored in Open WebUI's database once set: after switching engines, change the connection in
+      # Admin Panel -> Settings -> Connections (rustingstrata: Provider default; llama-server: Provider "llama.cpp")
+      OPENAI_API_BASE_URL: http://rustingstrata:8080/v1
       OPENAI_API_KEY: "sk-unused"
       WEBUI_AUTH: false
       ENABLE_TITLE_GENERATION: true
