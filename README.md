@@ -156,8 +156,8 @@ never forward its ports to the internet.
    `pull_policy: never`):
 
    ```bash
-   docker build --target app -t wallcrawler:0.6.0 .
-   docker build -t wallcrawler-tor:0.6.0 docker/tor
+   docker build --target app -t wallcrawler:0.6.1 .
+   docker build -t wallcrawler-tor:0.6.1 docker/tor
    docker build -t wallcrawler-chromium:1.65.1-2 docker/chromium
    ```
 

@@ -15,7 +15,7 @@
 # These ports are for the LAN: never forward them to the internet.
 services:
   wallcrawler:
-    image: wallcrawler:0.6.0
+    image: wallcrawler:0.6.1
     pull_policy: never
     container_name: wallcrawler
     restart: unless-stopped
@@ -62,7 +62,7 @@ services:
       retries: 3
 
   tor:
-    image: wallcrawler-tor:0.6.0              # its health check needs a working circuit
+    image: wallcrawler-tor:0.6.1              # its health check needs a working circuit
     pull_policy: never
     container_name: tor
     restart: unless-stopped
