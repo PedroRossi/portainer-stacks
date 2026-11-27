@@ -196,7 +196,7 @@ never forward its ports to the internet.
    docker build --target app -t wallcrawler:0.6.1 .
    docker build -t wallcrawler-tor:0.6.1 docker/tor
    docker build -t wallcrawler-chromium:1.65.1-2 docker/chromium
-   docker build --target app -t spiderbots:0.2.0 .     # in the spiderbots repo
+   docker build --target app -t spiderbots:0.3.0 .     # in the spiderbots repo
    ```
 
 2. Copy this folder to `$LLM_HOME/search` (Portainer CE can't mount repo files) and add SearXNG's secret key,
@@ -241,7 +241,9 @@ never forward its ports to the internet.
 - **Health:** wallcrawler starts once the others have started, not when they're healthy, since it copes without
   any of them. Tor's health check needs a working circuit, which can take a few minutes after a start.
 - **Model server:** spiderbots reaches ai-lab's on the host's port 8080 with a `localhost` Host header, which
-  RustingStrata's DNS-rebinding guard always lets through; ai-lab's stack needs no change for it.
+  RustingStrata's DNS-rebinding guard always lets through; ai-lab's stack needs no change for it. It can use Claude
+  Haiku 5.5 through Anthropic's API instead (see the comment in the compose file): runs take 2 to 4 minutes instead
+  of 8 to 16, for about 2 cents each, but the pages' passages leave the host.
 - **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory, in SQLite), `spiderbots-data` (the
   research runs) and `tor-data` (Tor's state). wallcrawler can keep that memory in Postgres or Turso instead (`WALLCRAWLER_DATABASE_URL`); the stack
   stays on SQLite.

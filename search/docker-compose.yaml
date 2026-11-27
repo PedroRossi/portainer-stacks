@@ -43,7 +43,7 @@ services:
     depends_on: [searxng, tor, chromium, byparr]
 
   spiderbots:
-    image: spiderbots:0.2.0
+    image: spiderbots:0.3.0
     pull_policy: never
     container_name: spiderbots
     restart: unless-stopped
@@ -55,6 +55,9 @@ services:
       SPIDERBOTS_LLM_URL: http://host.docker.internal:8080/v1
       SPIDERBOTS_LLM_HOST_HEADER: localhost:8080
       SPIDERBOTS_LLM_MODEL: qwen3.6-35b-a3b
+      # Claude instead: SPIDERBOTS_LLM_PROVIDER: anthropic (the model becomes claude-haiku-5-5) and the API key in a
+      # file mounted read-only, named by SPIDERBOTS_ANTHROPIC_API_KEY_FILE. The question and the passages of every
+      # page read then go to Anthropic.
     extra_hosts: ["host.docker.internal:host-gateway"]
     volumes:
       - spiderbots-data:/data               # the research runs: progress, reports, sources and notes
