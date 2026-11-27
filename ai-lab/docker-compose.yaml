@@ -52,8 +52,6 @@ services:
       - q4
       - --addr
       - 0.0.0.0:8080
-      - --allowed-hosts
-      - rustingstrata                # the name Open WebUI uses; IP addresses need no entry
       - --temp
       - "1.0"
       - --top-k
@@ -66,6 +64,10 @@ services:
       TZ: America/Recife
       HOME: /data                    # compiled kernels, the expert profile and the calibration file
       STRATA_NO_UPDATE_CHECK: "1"    # the image pins a commit; updates go through the Dockerfile
+      # Host names (and IP addresses) clients may use to reach the API, besides localhost: requests naming any other
+      # host get 403 (a DNS-rebinding guard). rustingstrata is the name Open WebUI uses. Add the host's own address
+      # and name with the Portainer stack variable STRATA_ALLOWED_HOSTS (comma-separated; kept out of git).
+      STRATA_ALLOWED_HOSTS: ${STRATA_ALLOWED_HOSTS:-rustingstrata}
     volumes:
       - ${LLM_HOME:-/home/pedro/llm}/models:/models:ro
       - ${LLM_HOME:-/home/pedro/llm}/ai-lab/rustingstrata-data:/data

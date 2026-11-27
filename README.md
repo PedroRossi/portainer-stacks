@@ -48,6 +48,10 @@ clocks locked at 1200 MHz:
 - **Images:** they work, but take about 4.5x longer than on llama.cpp (27 s and 61 s for the two test images).
 - **APIs:** the OpenAI API returns the reasoning in `reasoning_content`. On the Anthropic API the reasoning
   currently comes inside the text block, with a literal `</think>` before the answer.
+- **Access:** the API only answers requests whose Host is localhost or a listed name.
+  - Open WebUI's `rustingstrata` is listed by default.
+  - To reach it by IP address or host name, set the Portainer stack variable `STRATA_ALLOWED_HOSTS` to
+    `rustingstrata,<address>,<name>`.
 - **Data:** compiled kernels, the expert profile and the calibration file live in `$LLM_HOME/ai-lab/rustingstrata-data`.
 - **Switching back to llama.cpp:**
   1. Stop `rustingstrata`, then set the stack variable `COMPOSE_PROFILES=llamacpp`.
