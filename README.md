@@ -46,8 +46,9 @@ clocks locked at 1200 MHz:
 - **The trade-off:** replies come about 55-60% faster, and long prompts are read about half as fast. In chat and
   coding sessions most of a prompt is cached, so the faster replies dominate.
 - **Images:** they work, but take about 4.5x longer than on llama.cpp (27 s and 61 s for the two test images).
-- **APIs:** the OpenAI API returns the reasoning in `reasoning_content`. On the Anthropic API the reasoning
-  currently comes inside the text block, with a literal `</think>` before the answer.
+- **APIs:** the reasoning comes apart from the answer: `reasoning_content` on the OpenAI API, a `thinking` block on
+  the Anthropic API (what Claude Code uses). That's from the fork's patch, under review upstream. `thinking:
+  {"type": "disabled"}` turns it off for a request.
 - **Access:** the API only answers requests whose Host is localhost or a listed name.
   - Open WebUI's `rustingstrata` is listed by default.
   - To reach it by IP address or host name, set the Portainer stack variable `STRATA_ALLOWED_HOSTS` to

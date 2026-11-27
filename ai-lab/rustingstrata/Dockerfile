@@ -1,10 +1,13 @@
-# RustingStrata for GTX 16xx cards, built from the PedroRossi/RustingStrata fork: upstream
-# github.com/RustingStudio/RustingStrata plus a CUDA-core path for Turing cards without tensor cores
-# (the GTX 16 series still runs tensor-core instructions, but far slower than its CUDA cores).
+# RustingStrata for GTX 16xx cards, built from the PedroRossi/RustingStrata fork (branch deploy/ai-lab): upstream
+# github.com/RustingStudio/RustingStrata plus two patches under review:
+#   - a CUDA-core path for Turing cards without tensor cores (the GTX 16 series still runs tensor-core
+#     instructions, but far slower than its CUDA cores);
+#   - the Anthropic Messages API returns the reasoning as thinking blocks (Claude Code), and OpenAI replies that
+#     end in tool calls return it as reasoning_content.
 # The CUDA kernels compile at run time with NVRTC, so the image carries the CUDA 12.4 NVRTC library; the driver
 # comes from the NVIDIA container runtime. To update: change RS_COMMIT and bump the image tag in docker-compose.yaml.
 ARG RS_REPO=https://github.com/PedroRossi/RustingStrata.git
-ARG RS_COMMIT=f71f8575c50f02e24887dd130d17608a9077954c
+ARG RS_COMMIT=77e88119ce3d0353b7b3d352f667ae6d4613abc7
 
 FROM rust:1-bookworm AS build
 ARG RS_REPO

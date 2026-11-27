@@ -21,7 +21,7 @@
 # picoclaw-config.json and chromadb.yaml are kept here for later; nothing mounts them now.
 services:
   rustingstrata:
-    image: rustingstrata:f71f857
+    image: rustingstrata:77e8811
     build: ./rustingstrata         # used only when the tag is missing on the host: bump the tag to rebuild
     container_name: rustingstrata
     restart: unless-stopped
