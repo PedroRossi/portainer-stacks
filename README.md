@@ -156,8 +156,8 @@ never forward its ports to the internet.
    `pull_policy: never`):
 
    ```bash
-   docker build --target app -t wallcrawler:0.4.1 .
-   docker build -t wallcrawler-tor:0.4.1 docker/tor
+   docker build --target app -t wallcrawler:0.5.0 .
+   docker build -t wallcrawler-tor:0.5.0 docker/tor
    docker build -t wallcrawler-chromium:1.65.1 docker/chromium
    ```
 
@@ -197,7 +197,9 @@ never forward its ports to the internet.
 - **Images:** after building new wallcrawler images, bump the tags in the compose file and redeploy.
 - **Health:** wallcrawler starts once the others have started, not when they're healthy, since it copes without
   any of them. Tor's health check needs a working circuit, which can take a few minutes after a start.
-- **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory) and `tor-data` (Tor's state).
+- **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory, in SQLite) and `tor-data` (Tor's
+  state). wallcrawler can keep that memory in Postgres or Turso instead (`WALLCRAWLER_DATABASE_URL`); the stack
+  stays on SQLite.
 
 ---
 

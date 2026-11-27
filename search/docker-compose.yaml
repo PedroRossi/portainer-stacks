@@ -15,7 +15,7 @@
 # These ports are for the LAN: never forward them to the internet.
 services:
   wallcrawler:
-    image: wallcrawler:0.4.1
+    image: wallcrawler:0.5.0
     pull_policy: never
     container_name: wallcrawler
     restart: unless-stopped
@@ -26,7 +26,7 @@ services:
       WALLCRAWLER_BYPARR_URL: http://byparr:8191
       WALLCRAWLER_SEARXNG_URL: http://searxng:8080
     volumes:
-      - wallcrawler-data:/data              # the page cache and the spider-tracers
+      - wallcrawler-data:/data              # the page cache and the per-site memory, in SQLite
     ports:
       - "11437:8000"
     healthcheck:
@@ -62,7 +62,7 @@ services:
       retries: 3
 
   tor:
-    image: wallcrawler-tor:0.4.1              # its health check needs a working circuit
+    image: wallcrawler-tor:0.5.0              # its health check needs a working circuit
     pull_policy: never
     container_name: tor
     restart: unless-stopped
