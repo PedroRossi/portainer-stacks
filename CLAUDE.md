@@ -1,7 +1,7 @@
 # CLAUDE.md
 
-Docker Compose stacks, deployed via **Portainer** (or plain `docker compose`). One local-AI stack,
-**`ai-lab/`**, aimed at NVIDIA **GTX 16xx** cards for now.
+Docker Compose stacks, deployed via **Portainer** (or plain `docker compose`): the local-AI stack **`ai-lab/`**,
+aimed at NVIDIA **GTX 16xx** cards for now, and **`search/`**, web search and page reading for it.
 
 ## `ai-lab/`
 Deployed by Portainer from Git (compose path `ai-lab/docker-compose.yaml`). After a push, "Pull and redeploy"
@@ -33,6 +33,22 @@ if auto-update hasn't picked it up. A redeploy recreates every container in the 
 - **Volumes** (external): `ollama_open-webui` (Open WebUI), `ollama_open-terminal` (Open Terminal), `chromadb`.
 - `picoclaw-config.json` and `chromadb.yaml` are kept for later; nothing mounts them now.
 
+## `search/`
+Deployed by Portainer from Git (compose path `search/docker-compose.yaml`). LAN only: never forward its ports.
+- **Services:** `wallcrawler` (:11437: `/fetch`, `/search`, MCP at `/mcp`, Open WebUI's external search and loader
+  at `/openwebui/search` and `/openwebui/load`), `searxng` (:11438), `tor` (:9050 SOCKS, :9080 HTTP CONNECT;
+  private networks only), `chromium` and `byparr` (no ports).
+- **Images:** `wallcrawler:<version>`, `wallcrawler-tor:<version>` and `wallcrawler-chromium:<playwright version>`
+  are built on the host from the wallcrawler repo (`docker build --target app .`, `docker/tor`, `docker/chromium`),
+  with `pull_policy: never`. Bump the tags in the compose file after building new ones.
+- **Host paths:** `$LLM_HOME/search` mirrors this folder (`searxng/settings.yml`, a read-only single-file mount:
+  a replaced copy shows up after a redeploy), plus `searxng.secret` (SearXNG's key; kept out of git and Portainer,
+  read by a wrapped entrypoint into `SEARXNG_SECRET`).
+- **Open WebUI** (ai-lab) uses it: Web Search Engine `external` → `http://<host>:11437/openwebui/search`, Web
+  Loader Engine `external` → `http://<host>:11437/openwebui/load` (in its database, via the admin settings).
+- **wallcrawler** waits for the others to start, not to be healthy (it copes without them; Tor's health check
+  needs a working circuit).
+
 ## Conventions
 - Pinned image tags; services on the same stack talk by container name; host ports are published.
 - `TZ = America/Recife`.
@@ -51,5 +67,5 @@ docker compose config --quiet                       # validate
 docker compose up -d                                # the default services, without Portainer
 docker compose --profile image up -d comfyui forge  # image generation (unload the model first)
 ```
-Secrets stay out of git. open-terminal's key is a file on the host (`$LLM_HOME/ai-lab/open-terminal.key`),
-and `ai-lab/.env` is git-ignored.
+Secrets stay out of git. open-terminal's key is a file on the host (`$LLM_HOME/ai-lab/open-terminal.key`), as
+is SearXNG's (`$LLM_HOME/search/searxng.secret`), and `ai-lab/.env` is git-ignored.

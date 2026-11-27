@@ -1,0 +1,37 @@
+# SearXNG for wallcrawler's /search: JSON answers on, no rate limiter (it only serves wallcrawler), and the
+# engines that answer a home connection. Tested 2026-11, on top of SearXNG's defaults:
+# - Bing, Brave and Yahoo are turned on.
+# - Google (web, news, scholar, videos) and Qwant deny access, so they are off.
+# - PubMed is off: NCBI rejects the Chrome-like TLS handshake SearXNG sends (plain requests get through), and the
+#   engine allows only 3 s. Europe PMC, which also holds PubMed's abstracts, gets through when given 8 s.
+# - Startpage and Mojeek (off by default) return nothing from here.
+# - The Wikipedia engine needs a contact URL in these settings; wallcrawler reads Wikipedia through its API.
+use_default_settings: true
+server:
+  # A placeholder: the container takes the real key from the host file searxng.secret (see the compose file)
+  secret_key: "set-by-SEARXNG_SECRET"
+  limiter: false
+  image_proxy: false
+search:
+  formats: [html, json]
+engines:
+  - name: bing
+    disabled: false
+  - name: brave
+    disabled: false
+  - name: yahoo
+    disabled: false
+  - name: google
+    disabled: true
+  - name: google news
+    disabled: true
+  - name: google scholar
+    disabled: true
+  - name: google videos
+    disabled: true
+  - name: qwant
+    disabled: true
+  - name: pubmed
+    disabled: true
+  - name: europepmc
+    timeout: 8.0

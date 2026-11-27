@@ -5,6 +5,8 @@ Docker Compose stacks, deployed with **Portainer** (Git-backed stacks) or plain 
 - **`ai-lab/`**: a local AI stack: llama.cpp serving one model at a time (with downloads from Hugging Face),
   Open WebUI, ChromaDB and Open Terminal, plus ComfyUI/Forge behind a profile.
   **This setup is aimed at NVIDIA GTX 16xx cards for now.**
+- **`search/`**: self-hosted web search and page reading for the AI: wallcrawler (search, fetch, MCP, and Open
+  WebUI's web search) with SearXNG, Tor, headless Chromium and Byparr.
 
 ---
 
@@ -91,6 +93,60 @@ docker compose config --quiet                       # validate
 docker compose up -d                                # the default services
 docker compose --profile image up -d comfyui forge  # image generation (unload the model first)
 ```
+
+---
+
+## `search/`
+
+In Portainer, add it as a Git-backed stack with compose path `search/docker-compose.yaml`. It serves the LAN:
+never forward its ports to the internet.
+
+| service | port | what it is |
+|---|---|---|
+| `wallcrawler` | 11437 | search and read the web for AI: REST (`/fetch`, `/search`), MCP (`/mcp`), and Open WebUI's external web search and loader (`/openwebui/search`, `/openwebui/load`) |
+| `searxng` | 11438 | the metasearch engine behind `/search`, with its own web UI |
+| `tor` | 9050, 9080 | a Tor client (SOCKS, HTTP CONNECT) for wallcrawler and the LAN; private networks only |
+| `chromium`, `byparr` | none | headless Chromium and Byparr (Cloudflare challenges), used by wallcrawler |
+
+### Before the first deploy
+
+1. Build wallcrawler's images on the host, from the wallcrawler repo (the compose file names these tags, with
+   `pull_policy: never`):
+
+   ```bash
+   docker build --target app -t wallcrawler:0.4.0 .
+   docker build -t wallcrawler-tor:0.4.0 docker/tor
+   docker build -t wallcrawler-chromium:1.65.1 docker/chromium
+   ```
+
+2. Copy this folder to `$LLM_HOME/search` (Portainer CE can't mount repo files) and add SearXNG's secret key,
+   a file kept out of git and Portainer:
+
+   ```bash
+   rsync -a search/ "$LLM_HOME/search/"
+   head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' > "$LLM_HOME/search/searxng.secret"
+   chmod 600 "$LLM_HOME/search/searxng.secret"
+   ```
+
+### Using it
+
+- **Open WebUI** (Admin Panel → Settings → Web Search): Web Search Engine `external` with
+  `http://<host>:11437/openwebui/search`, and Web Loader Engine `external` with `http://<host>:11437/openwebui/load`.
+  The Web Search button and the model's `search_web` and `fetch_url` tools (native function calling) then use
+  wallcrawler.
+- **Coding tools** over MCP: `http://<host>:11437/mcp`, for example
+  `claude mcp add --transport http wallcrawler http://<host>:11437/mcp`. The tools are `search` and `fetch`.
+- **SearXNG** answers at `http://<host>:11438` in a browser too. Its settings (`search/searxng/settings.yml`) turn
+  on the engines that answer a home connection and turn off those that deny it; edits need a redeploy
+  (or `rsync --inplace` and a restart).
+- **Tor** for other apps: SOCKS `socks5h://<host>:9050` or an HTTP proxy at `<host>:9080`.
+
+### Notes
+
+- **Images:** after building new wallcrawler images, bump the tags in the compose file and redeploy.
+- **Health:** wallcrawler starts once the others have started, not when they're healthy, since it copes without
+  any of them. Tor's health check needs a working circuit, which can take a few minutes after a start.
+- **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory) and `tor-data` (Tor's state).
 
 ---
 

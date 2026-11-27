@@ -1,0 +1,105 @@
+# search: self-hosted web search and page reading for local AI (wallcrawler), next to ai-lab.
+# Deploy it in Portainer as a Git-backed stack (compose path search/docker-compose.yaml), or with docker compose.
+#
+#   wallcrawler   :11437  search and read the web: REST (/fetch, /search), MCP for coding tools (/mcp), and Open
+#                         WebUI's external web search and loader (/openwebui/search, /openwebui/load)
+#   searxng       :11438  the metasearch engine behind /search, with its own web UI
+#   tor           :9050   a Tor client: SOCKS on 9050, HTTP CONNECT on 9080; private networks only
+#   chromium, byparr      headless Chromium and Byparr (Cloudflare challenges), for wallcrawler only
+#
+# The wallcrawler, wallcrawler-tor and wallcrawler-chromium images are built on the host from the wallcrawler
+# repo (see the README); pull_policy never stops Portainer from looking for them in a registry.
+# Portainer CE can't bind-mount files from the repo, so bind mounts are absolute host paths under LLM_HOME
+# (default /home/pedro/llm): $LLM_HOME/search mirrors this folder, plus searxng.secret, SearXNG's secret key
+# (one line, kept out of git and Portainer).
+# These ports are for the LAN: never forward them to the internet.
+services:
+  wallcrawler:
+    image: wallcrawler:0.4.0
+    pull_policy: never
+    container_name: wallcrawler
+    restart: unless-stopped
+    environment:
+      TZ: America/Recife
+      WALLCRAWLER_TOR_PROXY: socks5h://tor:9050
+      WALLCRAWLER_CHROMIUM_WS: ws://chromium:3000/
+      WALLCRAWLER_BYPARR_URL: http://byparr:8191
+      WALLCRAWLER_SEARXNG_URL: http://searxng:8080
+    volumes:
+      - wallcrawler-data:/data              # the page cache and the spider-tracers
+    ports:
+      - "11437:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      start_period: 1m
+      start_interval: 2s
+      retries: 3
+    # Started, not healthy: wallcrawler copes without any of them (a slow Tor bootstrap mustn't keep it down)
+    depends_on: [searxng, tor, chromium, byparr]
+
+  searxng:
+    image: searxng/searxng:2026.11.26-b5605b8f2
+    container_name: searxng
+    restart: unless-stopped
+    # SearXNG reads its secret key from SEARXNG_SECRET: load it from the host file, then start as usual
+    entrypoint: ["/bin/sh", "-c", "export SEARXNG_SECRET=\"$$(cat /run/secrets/searxng.secret)\" && exec /usr/local/searxng/entrypoint.sh"]
+    environment:
+      TZ: America/Recife
+    volumes:
+      # One file, read-only: a copy replaced by rsync shows up after the next redeploy (rsync --inplace: at once)
+      - ${LLM_HOME:-/home/pedro/llm}/search/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ${LLM_HOME:-/home/pedro/llm}/search/searxng.secret:/run/secrets/searxng.secret:ro
+    ports:
+      - "11438:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/healthz"]
+      interval: 60s
+      timeout: 5s
+      start_period: 1m
+      start_interval: 2s
+      retries: 3
+
+  tor:
+    image: wallcrawler-tor:0.4.0              # its health check needs a working circuit
+    pull_policy: never
+    container_name: tor
+    restart: unless-stopped
+    environment:
+      TZ: America/Recife
+    volumes:
+      - tor-data:/var/lib/tor               # keeps its guard nodes between restarts
+    ports:
+      - "9050:9050"
+      - "9080:9080"
+
+  chromium:
+    image: wallcrawler-chromium:1.65.1        # Playwright's browser server; keep it on wallcrawler's Playwright version
+    pull_policy: never
+    container_name: chromium
+    restart: unless-stopped
+    init: true
+    shm_size: 1gb
+    environment:
+      TZ: America/Recife
+
+  byparr:
+    image: ghcr.io/thephaseless/byparr:3.1.1
+    container_name: byparr
+    restart: unless-stopped
+    shm_size: 1gb
+    tmpfs: ["/tmp:exec,mode=1777,size=1g"]
+    # No BROWSER_LOCALE: Byparr matches the browser's language and timezone to the exit's country, which
+    # challenges check. Its image's own health check runs every 15 minutes; this one probes /docs.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -o /dev/null http://127.0.0.1:8191/docs"]
+      interval: 60s
+      timeout: 10s
+      start_period: 3m
+      start_interval: 3s
+      retries: 3
+
+volumes:
+  wallcrawler-data: {}
+  tor-data: {}
