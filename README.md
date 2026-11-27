@@ -181,19 +181,21 @@ never forward its ports to the internet.
 | service | port | what it is |
 |---|---|---|
 | `wallcrawler` | 11437 | search and read the web for AI: REST (`/fetch`, `/search`), MCP (`/mcp`), and Open WebUI's external web search and loader (`/openwebui/search`, `/openwebui/load`) |
+| `spiderbots` | 11439 | deep research on wallcrawler and the ai-lab model server: Open WebUI's `spiderbots` model (`/v1`), MCP (`/mcp`), REST (`/research`) |
 | `searxng` | 11438 | the metasearch engine behind `/search`, with its own web UI |
 | `tor` | 9050, 9080 | a Tor client (SOCKS, HTTP CONNECT) for wallcrawler and the LAN; private networks only |
 | `chromium`, `byparr` | none | headless Chromium and Byparr (Cloudflare challenges), used by wallcrawler |
 
 ### Before the first deploy
 
-1. Build wallcrawler's images on the host, from the wallcrawler repo (the compose file names these tags, with
-   `pull_policy: never`):
+1. Build the images on the host: wallcrawler's from the wallcrawler repo, spiderbots' from the spiderbots repo
+   (the compose file names these tags, with `pull_policy: never`):
 
    ```bash
    docker build --target app -t wallcrawler:0.6.1 .
    docker build -t wallcrawler-tor:0.6.1 docker/tor
    docker build -t wallcrawler-chromium:1.65.1-2 docker/chromium
+   docker build --target app -t spiderbots:0.1.0 .     # in the spiderbots repo
    ```
 
 2. Copy this folder to `$LLM_HOME/search` (Portainer CE can't mount repo files) and add SearXNG's secret key,
@@ -220,8 +222,13 @@ never forward its ports to the internet.
   - create a model on Qwen with the wallcrawler tools, File Context on and Web Search off.
 
   wallcrawler's README has the steps and its system prompt.
+- **Deep research** in Open WebUI: add `http://<host>:11439/v1` as an OpenAI connection (Admin Panel → Settings →
+  Connections, no key), and chat with the `spiderbots` model. A run's progress shows as its thinking, then the cited
+  report is the answer; a run takes minutes, and runs go one at a time. Open WebUI's `AIOHTTP_CLIENT_TIMEOUT` is
+  unset, so a long answer isn't cut off.
 - **Coding tools** over MCP: `http://<host>:11437/mcp`, for example
   `claude mcp add --transport http wallcrawler http://<host>:11437/mcp`. The tools are `search` and `fetch`.
+  spiderbots' are at `http://<host>:11439/mcp`: `deep_research`, `start_research` and `research_status`.
 - **SearXNG** answers at `http://<host>:11438` in a browser too. Its settings (`search/searxng/settings.yml`) turn
   on the engines that answer a home connection and turn off those that deny it; edits need a redeploy
   (or `rsync --inplace` and a restart).
@@ -232,8 +239,10 @@ never forward its ports to the internet.
 - **Images:** after building new wallcrawler images, bump the tags in the compose file and redeploy.
 - **Health:** wallcrawler starts once the others have started, not when they're healthy, since it copes without
   any of them. Tor's health check needs a working circuit, which can take a few minutes after a start.
-- **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory, in SQLite) and `tor-data` (Tor's
-  state). wallcrawler can keep that memory in Postgres or Turso instead (`WALLCRAWLER_DATABASE_URL`); the stack
+- **Model server:** spiderbots reaches ai-lab's on the host's port 8080 with a `localhost` Host header, which
+  RustingStrata's DNS-rebinding guard always lets through; ai-lab's stack needs no change for it.
+- **Data volumes:** `wallcrawler-data` (the page cache and the per-site memory, in SQLite), `spiderbots-data` (the
+  research runs) and `tor-data` (Tor's state). wallcrawler can keep that memory in Postgres or Turso instead (`WALLCRAWLER_DATABASE_URL`); the stack
   stays on SQLite.
 
 ---
