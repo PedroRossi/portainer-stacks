@@ -43,7 +43,7 @@ services:
     depends_on: [searxng, tor, chromium, byparr]
 
   spiderbots:
-    image: spiderbots:0.1.0
+    image: spiderbots:0.2.0
     pull_policy: never
     container_name: spiderbots
     restart: unless-stopped
