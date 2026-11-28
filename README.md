@@ -196,7 +196,7 @@ never forward its ports to the internet.
    docker build --target app -t wallcrawler:0.6.1 .
    docker build -t wallcrawler-tor:0.6.1 docker/tor
    docker build -t wallcrawler-chromium:1.65.1-2 docker/chromium
-   docker build --target app -t spiderbots:0.3.0 .     # in the spiderbots repo
+   docker build --target app -t spiderbots:0.3.1 .     # in the spiderbots repo
    ```
 
 2. Copy this folder to `$LLM_HOME/search` (Portainer CE can't mount repo files) and add SearXNG's secret key,
